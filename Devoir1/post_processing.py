@@ -14,14 +14,24 @@ def norms_L1_L2_Linf(C_num, C_ref, dr):
     return L1, L2, Linf
 
 def plot_profiles(R, D_eff, S, C_e, N_profile):
-    """
-    Trace C(r) à l'état stationnaire (schéma 1, schéma 2) vs analytique.
-    """
+    '''
+    Docstring for plot_profiles
+
+    Trace C(r) les profil de concentration 
+    
+    :param R: Rayon
+    :param D_eff: Coeff de diffusion
+    :param S: quantite de sel
+    :param C_e: concentration a la surface
+    :param N_profile: Nombre de noeuds
+    '''
+
     r1, C1 = solve_scheme_1(R, D_eff, S, C_e, N_profile)
     r2, C2 = solve_scheme_2(R, D_eff, S, C_e, N_profile)
 
     C_exact = analytic_solution(r1, R, D_eff, S, C_e)
 
+    # Superpose les 3 courbes
     plt.figure(dpi=250)
     plt.plot(r1, C_exact, linewidth=2, label="Analytique ")
     plt.plot(r1, C1, "--", linewidth=2, label=f"Schéma 1 (N={N_profile})")
@@ -80,9 +90,9 @@ def plot_error_norms(R, D_eff, S, C_e, N_list):
     plt.loglog(h, Linf_2, "^-.", linewidth=2, label="Schéma 2 - Linf")
 
     plt.gca().invert_xaxis()  
-    plt.xlabel("Pas de maille h = Δr [m]")
+    plt.xlabel("Pas de maille h = dr [m]")
     plt.ylabel("Norme de l’erreur")
-    plt.title("Vérification: erreurs L1, L2 et L∞ vs Δr")
+    plt.title("Vérification: erreurs L1, L2 et L_infini vs dr")
     plt.grid(True, which="both")
     plt.legend()
     plt.tight_layout()
