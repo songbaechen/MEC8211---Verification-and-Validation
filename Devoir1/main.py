@@ -15,7 +15,7 @@ def main():
     print("==================================\n")
 
     # (a) Profil de concentration stationnaire
-    N_profile = 101
+    N_profile = 5
     plot_profiles(R, D_eff, S, C_e, N_profile)
 
     # (b) Vérification du code : erreurs L1, L2, L_infini
