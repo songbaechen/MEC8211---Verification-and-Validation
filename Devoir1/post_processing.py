@@ -77,6 +77,7 @@ def plot_error_norms(R, D_eff, S, C_e, N_list):
               f"S1: L1={L1_1[-1]:.3e}, L2={L2_1[-1]:.3e}, Linf={Linf_1[-1]:.3e} | "
               f"S2: L1={L1_2[-1]:.3e}, L2={L2_2[-1]:.3e}, Linf={Linf_2[-1]:.3e}")
 
+
     h = np.array(h)
 
     # Plot log-log : erreurs vs h
@@ -93,6 +94,25 @@ def plot_error_norms(R, D_eff, S, C_e, N_list):
     plt.xlabel("Pas de maille h = dr [m]")
     plt.ylabel("Norme de l’erreur")
     plt.title("Vérification: erreurs L1, L2 et L_infini vs dr")
+    plt.grid(True, which="both")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    Nvals = np.array(N_list, dtype=float)
+
+    plt.figure(dpi=170)
+    plt.loglog(Nvals, L1_1, "o--", linewidth=2, label="Schéma 1 - L1")
+    plt.loglog(Nvals, L2_1, "s--", linewidth=2, label="Schéma 1 - L2")
+    plt.loglog(Nvals, Linf_1, "^-", linewidth=2, label="Schéma 1 - Linf")
+
+    plt.loglog(Nvals, L1_2, "o-.", linewidth=2, label="Schéma 2 - L1")
+    plt.loglog(Nvals, L2_2, "s-.", linewidth=2, label="Schéma 2 - L2")
+    plt.loglog(Nvals, Linf_2, "^-.", linewidth=2, label="Schéma 2 - Linf")
+
+    plt.xlabel("Nombre de noeuds N")
+    plt.ylabel("Norme de l’erreur")
+    plt.title("Vérification: erreurs L1, L2 et L∞ vs N (log-log)")
     plt.grid(True, which="both")
     plt.legend()
     plt.tight_layout()
