@@ -89,7 +89,7 @@ def plot_error_norms(R, D_eff, S, C_e, N_list):
     plt.loglog(h, L2_2, "s-.", linewidth=2, label="Schéma 2 - L2")
     plt.loglog(h, Linf_2, "^-.", linewidth=2, label="Schéma 2 - Linf")
 
-    plt.gca().invert_xaxis()  
+    # plt.gca().invert_xaxis()  
     plt.xlabel("Pas de maille h = dr [m]")
     plt.ylabel("Norme de l’erreur")
     plt.title("Vérification: erreurs L1, L2 et L_infini vs dr")
