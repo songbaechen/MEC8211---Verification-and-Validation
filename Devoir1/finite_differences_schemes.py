@@ -18,8 +18,8 @@ def solve_scheme_1(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray
     """
     r_mesh, dr = create_mesh(param.r, n_profile)
 
-    a = np.zeros((n_profile, n_profile))    # LHS/influence matrix
-    b = np.zeros(n_profile)                 # RHS
+    a = np.zeros((n_profile, n_profile), dtype=np.float64)  # LHS/influence matrix
+    b = np.zeros(n_profile, dtype=np.float64)                     # RHS
 
     # symétrie, pas de flux à r=0
     a[0, 0] = 1.0
@@ -40,7 +40,7 @@ def solve_scheme_1(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray
     a[n_profile - 1, n_profile - 1] = 1.0
     b[n_profile - 1]                = param.c_e
 
-    c_array = np.linalg.solve(a, b)
+    c_array = np.linalg.solve(a.astype(np.float64), b.astype(np.float64))
     return r_mesh, c_array
 
 
@@ -56,8 +56,8 @@ def solve_scheme_2(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray
     """
     r_mesh, dr = create_mesh(param.r, n_profile)
 
-    a = np.zeros((n_profile, n_profile))    # LHS/influence matrix
-    b = np.zeros(n_profile)                 # RHS
+    a = np.zeros((n_profile, n_profile), dtype=np.float64)  # LHS/influence matrix
+    b = np.zeros(n_profile, dtype=np.float64)                     # RHS
 
     # symétrie, pas de flux à r=0
     a[0, 0] = 1.0
@@ -78,5 +78,5 @@ def solve_scheme_2(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray
     a[n_profile - 1, n_profile - 1] = 1.0
     b[n_profile - 1]                = param.c_e
 
-    c_array = np.linalg.solve(a, b)
+    c_array = np.linalg.solve(a.astype(np.float64), b.astype(np.float64))
     return r_mesh, c_array

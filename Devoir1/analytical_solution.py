@@ -14,7 +14,7 @@ def analytic_solution(param: ProblemParameters, r_array: np.ndarray) -> np.ndarr
 
     :return: solution [np.ndarray]
     """
-    r_array = np.asarray(r_array, dtype=float)
+    r_array = np.asarray(r_array, dtype=np.float64)
     sol = param.c_e + (param.s / (4 * param.d_eff) ) * (r_array**2 - param.r**2)
 
     return sol

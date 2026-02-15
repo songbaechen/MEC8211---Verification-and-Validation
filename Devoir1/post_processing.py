@@ -20,6 +20,10 @@ def error_norms(c_num: np.ndarray, c_ref: np.ndarray, dr: np.ndarray)\
 
     :return: L1, L2, L_inf [tuple[np.ndarray, np.ndarray, np.ndarray]]
     """
+    c_num = np.asarray(c_num, dtype=np.float64)
+    c_ref = np.asarray(c_ref, dtype=np.float64)
+    dr = np.asarray(dr, dtype=np.float64)
+
     e = c_num - c_ref
 
     l1 = np.sum(np.abs(e)) * dr

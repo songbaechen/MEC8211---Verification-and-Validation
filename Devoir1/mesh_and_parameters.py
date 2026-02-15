@@ -22,7 +22,7 @@ def create_mesh(r, n_profile):
     if n_profile < 3:
         raise ValueError("Il faut avoir au moins 3 noeuds pour résoudre le problème")
 
-    r = np.linspace(0.0, r, n_profile)
+    r = np.linspace(0.0, r, n_profile, dtype=np.float64)
     dr = r[1] - r[0]
 
     return r, dr
