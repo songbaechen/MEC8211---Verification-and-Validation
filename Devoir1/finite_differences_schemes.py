@@ -1,75 +1,82 @@
+"""
+Schémas numériques d'ordre 1 et 2 pour la diffusion radiale.
+"""
 import numpy as np
 
-
-def create_mesh(R, N): 
-    '''
-    Docstring for create_mesh
-    
-    Il faut créer une grille radfiale uniforme en 1D [0, R] 
-
-    :param R: Rayon total
-    :param N: Nombre de noeuds
-    '''
-    if N  < 3: 
-        raise ValueError("Il faut avoir au moins 3 noeuds pour résoudre le problème")
-    
-    r = np.linspace(0.0, R, N)
-    dr = r[1] - r[0]
-
-    return r, dr
-
-def solve_scheme_1(R, D_eff, S, C_e, N) : 
-
-    r, dr = create_mesh(R, N)
-
-    A = np.zeros((N, N))
-    b = np.zeros(N)
-
-    A[0, 0] = 1.0
-    A[0, 1] = -1.0
-    b[0] = 0.0
-
-    for i in range(1, N-1): 
-        ri = r[i]
-
-        A[i, i-1] = 1.0 / dr**2
-        A[i, i]   = -2.0 / dr**2 - 1.0 / (ri * dr)
-        A[i, i+1] = 1.0 / dr**2 + 1.0 / (ri * dr)
-
-        b[i] = S / D_eff
-
-    A[N - 1, :] = 0.0
-    A[N - 1, N - 1] = 1.0
-    b[N - 1] = C_e
-
-    C = np.linalg.solve(A, b)
-    return r, C
-
-def solve_scheme_2(R, D_eff, S, C_e, N): 
-
-    r, dr = create_mesh(R, N)
-
-    A = np.zeros((N, N))
-    b = np.zeros(N)
-
-    A[0, 0] = 1.0
-    A[0, 1] = -1.0
-    b[0] = 0.0
-
-    for i in range(1, N-1): 
-        ri = r[i]
-
-        A[i, i-1] = (1.0 / dr**2) - (1.0 / (2.0 * dr * ri))
-        A[i, i]     = -2.0 / dr**2
-        A[i, i + 1] = (1.0 / dr**2) + (1.0 / (2.0 * dr * ri))
-
-        b[i] = S / D_eff
+from mesh_and_parameters import ProblemParameters, create_mesh
 
 
-    A[N - 1, :] = 0.0
-    A[N - 1, N - 1] = 1.0
-    b[N - 1] = C_e
+def solve_scheme_1(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Fonction calculant la concentration du profil avec un schéma d'ordre 1.
+    Retourne le maillage et un array contenant les concentrations aux nœuds résolu numériquement.
 
-    C = np.linalg.solve(A, b)
-    return r, C
+    :param param: Data class contenant les paramètres de la simulation [ProblemParameters]
+    :param n_profile: Nombre de nœuds [int]
 
+    :return: r_mesh, c_array [tuple[np.ndarray, np.ndarray]]
+    """
+    r_mesh, dr = create_mesh(param.r, n_profile)
+
+    a = np.zeros((n_profile, n_profile))    # LHS/influence matrix
+    b = np.zeros(n_profile)                 # RHS
+
+    # symétrie, pas de flux à r=0
+    a[0, 0] = 1.0
+    a[0, 1] = -1.0
+    b[0]    = 0.0
+
+    for i in range(1, n_profile-1):
+        ri = r_mesh[i]
+
+        a[i, i-1] = 1.0 / dr**2
+        a[i, i]   = -2.0 / dr**2 - 1.0 / (ri * dr)
+        a[i, i+1] = 1.0 / dr**2 + 1.0 / (ri * dr)
+
+        b[i] = param.s / param.d_eff
+
+    # condition de Dirichlet
+    a[n_profile - 1, :]             = 0.0
+    a[n_profile - 1, n_profile - 1] = 1.0
+    b[n_profile - 1]                = param.c_e
+
+    c_array = np.linalg.solve(a, b)
+    return r_mesh, c_array
+
+
+def solve_scheme_2(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Fonction calculant la concentration du profil avec un schéma d'ordre 2.
+    Retourne le maillage et un array contenant les concentrations aux nœuds résolu numériquement.
+
+    :param param: Data class contenant les paramètres de la simulation [ProblemParameters]
+    :param n_profile: Nombre de nœuds [int]
+
+    :return: r_mesh, c_array [tuple[np.ndarray, np.ndarray]]
+    """
+    r_mesh, dr = create_mesh(param.r, n_profile)
+
+    a = np.zeros((n_profile, n_profile))    # LHS/influence matrix
+    b = np.zeros(n_profile)                 # RHS
+
+    # symétrie, pas de flux à r=0
+    a[0, 0] = 1.0
+    a[0, 1] = -1.0
+    b[0]    = 0.0
+
+    for i in range(1, n_profile-1):
+        ri = r_mesh[i]
+
+        a[i, i-1]   = (1.0 / dr**2) - (1.0 / (2.0 * dr * ri))
+        a[i, i]     = -2.0 / dr**2
+        a[i, i + 1] = (1.0 / dr**2) + (1.0 / (2.0 * dr * ri))
+
+        b[i] = param.s / param.d_eff
+
+    # condition de Dirichlet
+    a[n_profile - 1, :]             = 0.0
+    a[n_profile - 1, n_profile - 1] = 1.0
+    b[n_profile - 1]                = param.c_e
+
+    c_array = np.linalg.solve(a, b)
+    return r_mesh, c_array

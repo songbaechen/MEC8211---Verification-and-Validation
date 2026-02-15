@@ -1,26 +1,33 @@
+"""
+Script principal exécutant la simulation et les post-traitements du problème de diffusion.
+"""
 from post_processing import plot_profiles, plot_error_norms
+from mesh_and_parameters import ProblemParameters
 
 def main():
-    # Paramètres 
-    R = 0.5            # m -> D = 1
-    S = 2e-8           # mol/m^3/s
-    D_eff = 1e-10      # m^2/s
-    C_e = 20.0         # mol/m^3
+    """
+    Point d’entrée du programme: définition des paramètres, résolution et visualisation.
+    """
+    # Paramètres
+    r = 0.5            # m -> D = 1
+    s = 2e-8           # mol/m^3/s
+    d_eff = 1e-10      # m^2/s
+    c_e = 20.0         # mol/m^3
+    param = ProblemParameters(r=r, s=s, d_eff=d_eff, c_e=c_e)
 
     print("=== Paramètres de la simulation ===")
-    print(f"R     = {R} m")
-    print(f"S     = {S} mol/m^3/s")
-    print(f"D_eff = {D_eff} m^2/s")
-    print(f"C_e   = {C_e} mol/m^3")
+    print(f"R     = {r} m")
+    print(f"S     = {s} mol/m^3/s")
+    print(f"D_eff = {d_eff} m^2/s")
+    print(f"C_e   = {c_e} mol/m^3")
     print("==================================\n")
 
     # (a) Profil de concentration stationnaire
-    N_profile = 5
-    plot_profiles(R, D_eff, S, C_e, N_profile)
+    plot_profiles(param=param, n_profile=5, plot_1=True, plot_2=True)
 
     # (b) Vérification du code : erreurs L1, L2, L_infini
-    N_list = [20, 40, 80, 160, 320] 
-    plot_error_norms(R, D_eff, S, C_e, N_list)
+    n_profil_list = [20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240]
+    plot_error_norms(param, n_profil_list, plot_1=False, plot_2=True)
 
 
 if __name__ == "__main__":
