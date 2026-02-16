@@ -26,7 +26,7 @@ def main():
     plot_profiles(param=param, n_profile=5, plot_1=True, plot_2=True)
 
     # (b) Vérification du code : erreurs L1, L2, L_infini
-    n_profil_list = [20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240]
+    n_profil_list = [5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240]
     plot_error_norms(param, n_profil_list, plot_1=True, plot_2=True)
 
 

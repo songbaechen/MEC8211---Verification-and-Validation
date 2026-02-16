@@ -27,7 +27,7 @@ def error_norms(c_num: np.ndarray, c_ref: np.ndarray, dr: np.ndarray)\
     e = c_num - c_ref
 
     l1 = np.sum(np.abs(e)) * dr
-    l2 = np.sqrt(np.sum(e**2) * dr)
+    l2 = np.sqrt(np.sum(e**2) * dr) 
     l_inf = np.max(np.abs(e))
     return l1, l2, l_inf
 
@@ -165,9 +165,9 @@ def plot_error_norms(param: ProblemParameters, n_profil_list: list[int],
 
         h.append(dr1)
         # Print des erreurs
-        # print(f"N={n_profil_tmp:4d}  h={dr1:.3e} | "
-        #       f"S1: L1={l1_1[-1]:.3e}, L2={l2_1[-1]:.3e}, Linf={l_inf_1[-1]:.3e} | "
-        #       f"S2: L1={l1_2[-1]:.3e}, L2={l2_2[-1]:.3e}, Linf={l_inf_2[-1]:.3e}")
+        print(f"N={n_profil_tmp:4d}  h={dr1:.3e} | "
+               f"S1: L1={l1_1[-1]:.3e}, L2={l2_1[-1]:.3e}, Linf={l_inf_1[-1]:.3e} | "
+              f"S2: L1={l1_2[-1]:.3e}, L2={l2_2[-1]:.3e}, Linf={l_inf_2[-1]:.3e}")
 
     h = np.array(h)
     ordre_de_convergence(h=h, erreur_l1=np.array(l1_1), erreur_l2=np.array(l2_1), erreur_l_inf=np.array(l_inf_1))
