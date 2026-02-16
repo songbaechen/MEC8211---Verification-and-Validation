@@ -60,9 +60,14 @@ def solve_scheme_2(param: ProblemParameters, n_profile: int) -> tuple[np.ndarray
     b = np.zeros(n_profile, dtype=np.float64)                     # RHS
 
     # symétrie, pas de flux à r=0
-    a[0, 0] = 1.0
-    a[0, 1] = -1.0
-    b[0]    = 0.0
+    #a[0, 0] = 1.0
+    #a[0, 1] = -1.0
+    #b[0]    = 0.0
+
+    a[0, 0] = -3.0
+    a[0, 1] =  4.0
+    a[0, 2] = -1.0
+    b[0] = 0.0
 
     for i in range(1, n_profile-1):
         ri = r_mesh[i]
