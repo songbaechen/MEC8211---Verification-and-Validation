@@ -27,7 +27,7 @@ def error_norms(c_num: np.ndarray, c_ref: np.ndarray, dr: np.ndarray)\
     e = c_num - c_ref
 
     l1 = np.sum(np.abs(e)) * dr
-    l2 = np.sqrt(np.sum(e**2) * dr) 
+    l2 = np.sqrt(np.sum(e**2) * dr)
     l_inf = np.max(np.abs(e))
     return l1, l2, l_inf
 
@@ -72,7 +72,8 @@ def plot_profiles(param: ProblemParameters, n_profile, plot_1, plot_2):
     plt.show()
 
 
-def ordre_de_convergence(h: np.ndarray, erreur_l1: np.ndarray, erreur_l2: np.ndarray, erreur_l_inf: np.ndarray) \
+def ordre_de_convergence(h: np.ndarray, erreur_l1: np.ndarray,
+                         erreur_l2: np.ndarray, erreur_l_inf: np.ndarray) \
         -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Fonction calculant l'ordre de convergence avec les erreurs L1, L2 et L_inf.
@@ -90,7 +91,7 @@ def ordre_de_convergence(h: np.ndarray, erreur_l1: np.ndarray, erreur_l2: np.nda
     e2 = np.asarray(erreur_l2, dtype=float).copy()
     e_inf = np.asarray(erreur_l_inf, dtype=float).copy()
 
-    if not (len(h) == len(e1) == len(e2) == len(e_inf)):
+    if not len(h) == len(e1) == len(e2) == len(e_inf):
         raise ValueError("h, erreur_l1, erreur_l2, erreur_l_inf doivent avoir la même longueur.")
     if len(h) < 2:
         raise ValueError("Il faut au moins 2 maillages pour calculer un ordre de convergence.")
@@ -170,8 +171,10 @@ def plot_error_norms(param: ProblemParameters, n_profil_list: list[int],
               f"S2: L1={l1_2[-1]:.3e}, L2={l2_2[-1]:.3e}, Linf={l_inf_2[-1]:.3e}")
 
     h = np.array(h)
-    ordre_de_convergence(h=h, erreur_l1=np.array(l1_1), erreur_l2=np.array(l2_1), erreur_l_inf=np.array(l_inf_1))
-    ordre_de_convergence(h=h, erreur_l1=np.array(l1_2), erreur_l2=np.array(l2_2), erreur_l_inf=np.array(l_inf_2))
+    ordre_de_convergence(h=h, erreur_l1=np.array(l1_1),
+                         erreur_l2=np.array(l2_1), erreur_l_inf=np.array(l_inf_1))
+    ordre_de_convergence(h=h, erreur_l1=np.array(l1_2),
+                         erreur_l2=np.array(l2_2), erreur_l_inf=np.array(l_inf_2))
 
     # Plot log-log : erreurs vs h
     plt.figure(dpi=170)
