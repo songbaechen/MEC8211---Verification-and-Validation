@@ -46,3 +46,15 @@ def source_term_MMS(r: float, t: float, R: float, D: float, k: float, p: MMSPara
     dC_dt = A * (1.0 - (r / R) ** 2) * omega * np.cos(omega * t)
     
     # Dérivéees en r 
+    Cr = A * (-2.0 * r / (R ** 2)) * np.sin(omega * t)
+    Crr = A * (-2.0 / (R ** 2)) * np.sin(omega * t)
+
+    # quand r -> 0, on fait la limite 
+    terme_r_0 = (-4.0 * A / (R ** 2)) * np.sin(omega * t)
+
+    if abs(r) < 1e-14: 
+        term_2 = terme_r_0
+    else: 
+        term_2 = Crr + (1.0 / r) * Cr
+
+    return dC_dt - D * term_2 + C
