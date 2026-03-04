@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from mesh_and_parameters import ProblemParameters
 from finite_differences_schemes import solve_unsteady_scheme
-from mms_solution import MMSParams, mms_function
+from mms_solution import MMSParams, mms_function, source_term_MMS
 
 
 def error_norms(c_num_hist: np.ndarray, 
@@ -189,3 +189,158 @@ def convergence_time(
         "p_L2": p_l2,
         "p_Linf": p_linf,
     }
+
+def plot_mms_solution_profiles(
+    problem: ProblemParameters,
+    mms: MMSParams,
+    num_nodes: int,
+    times_to_plot: list[float]):
+    """
+    Plot des profils C_mms(r,t) pour plusieurs temps.
+    """
+
+    r_mesh = np.linspace(0.0, float(problem.r), int(num_nodes))
+
+    plt.figure(dpi=300)
+
+    for t_val in times_to_plot:
+        c_vals = [
+            mms_function(float(r_i), float(t_val), float(problem.r), mms)
+            for r_i in r_mesh
+        ]
+        plt.plot(r_mesh, c_vals, label=f"t={t_val:.3e} s")
+
+    plt.xlabel("r [m]")
+    plt.ylabel("C_mms(r,t)")
+    plt.title("Solution manufacturée C_mms(r,t)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_mms_source_profiles(
+    problem: ProblemParameters,
+    mms: MMSParams,
+    num_nodes: int,
+    times_to_plot: list[float]):
+    """
+    Plot des profils du terme source S_mms(r,t).
+    """
+    r_mesh = np.linspace(0.0, float(problem.r), int(num_nodes))
+
+    d_eff = float(problem.d_eff)
+    k_reac = float(problem.k)
+
+    plt.figure(dpi=300)
+
+    for t_val in times_to_plot:
+        s_vals = [
+            source_term_MMS(
+                float(r_i),
+                float(t_val),
+                float(problem.r),
+                d_eff,
+                k_reac,
+                mms,
+            )
+            for r_i in r_mesh
+        ]
+        plt.plot(r_mesh, s_vals, label=f"t={t_val:.3e} s")
+
+    plt.xlabel("r [m]")
+    plt.ylabel("S_mms(r,t)")
+    plt.title("Terme source manufacturé S_mms(r,t)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+def plot_error_convergence_space(space_results: dict):
+    """
+    Plot Log-log des erreurs (L1, L2, Linf) en fonction de dr.
+    """
+    h_sorted = np.asarray(space_results["h_sorted"], dtype=float)
+    l1_sorted = np.asarray(space_results["L1_sorted"], dtype=float)
+    l2_sorted = np.asarray(space_results["L2_sorted"], dtype=float)
+    linf_sorted = np.asarray(space_results["Linf_sorted"], dtype=float)
+
+    plt.figure(dpi=220)
+    plt.loglog(h_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
+    plt.loglog(h_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
+    plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="Linf")
+
+    plt.xlabel("h = Δr [m]")
+    plt.ylabel("Norme de l'erreur (espace × temps)")
+    plt.title("Convergence en espace (Δt fixé petit)")
+    plt.grid(True, which="both")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_error_convergence_time(time_results: dict):
+    """
+    Plot Log-log des erreurs (L1, L2, Linf) en fonction de dt.
+    """
+    h_sorted = np.asarray(time_results["h_sorted"], dtype=float)
+    l1_sorted = np.asarray(time_results["L1_sorted"], dtype=float)
+    l2_sorted = np.asarray(time_results["L2_sorted"], dtype=float)
+    linf_sorted = np.asarray(time_results["Linf_sorted"], dtype=float)
+
+    plt.figure(dpi=220)
+    plt.loglog(h_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
+    plt.loglog(h_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
+    plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="Linf")
+
+    plt.xlabel("h = Δt [s]")
+    plt.ylabel("Norme de l'erreur (espace × temps)")
+    plt.title("Convergence en temps (Δr fixé petit)")
+    plt.grid(True, which="both")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_heatmaps_num_mms_error(
+    c_num_hist: np.ndarray,
+    r_mesh: np.ndarray,
+    time_array: np.ndarray,
+    problem: ProblemParameters,
+    mms: MMSParams):
+    """
+    Plot Heat-Maps
+    """
+    num_time_steps, num_nodes = c_num_hist.shape
+
+    c_mms_hist = np.zeros_like(c_num_hist, dtype=float)
+    for n_idx in range(num_time_steps):
+        t_val = float(time_array[n_idx])
+        for i_idx in range(num_nodes):
+            r_val = float(r_mesh[i_idx])
+            c_mms_hist[n_idx, i_idx] = mms_function(r_val, t_val, float(problem.r), mms)
+
+    error_hist = c_num_hist - c_mms_hist
+
+    extent = (float(r_mesh[0]), float(r_mesh[-1]), float(time_array[0]), float(time_array[-1]))
+
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(14.0, 4.2), dpi=220)
+
+    im_num = axes[0].imshow(c_num_hist, aspect="auto", origin="lower", extent=extent)
+    axes[0].set_title("Numérique")
+    axes[0].set_xlabel("r [m]")
+    axes[0].set_ylabel("t [s]")
+    fig.colorbar(im_num, ax=axes[0])
+
+    im_mms = axes[1].imshow(c_mms_hist, aspect="auto", origin="lower", extent=extent)
+    axes[1].set_title("MMS")
+    axes[1].set_xlabel("r [m]")
+    fig.colorbar(im_mms, ax=axes[1])
+
+    im_err = axes[2].imshow(error_hist, aspect="auto", origin="lower", extent=extent)
+    axes[2].set_title("Erreur (num - MMS)")
+    axes[2].set_xlabel("r [m]")
+    fig.colorbar(im_err, ax=axes[2])
+
+    fig.tight_layout()
+    plt.show()
