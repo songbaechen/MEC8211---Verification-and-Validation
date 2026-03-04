@@ -52,7 +52,7 @@ def solve_unsteady_scheme(param: ProblemParameters, n_profile: int):
             L_i_plus_1 = (1.0 / dr**2) + (1.0 / (2.0 * dr * ri))
 
             a[i, i-1] = -D * L_i_moins_1
-            a[i, i] = (1.0 / dt + k) - D * L_i
+            a[i, i] = (1.0/dt + k) - D*L_i
             a[i, i + 1] = -D * L_i_plus_1
 
             b[i] = (1.0 / dt) * Cn[i]
@@ -62,7 +62,7 @@ def solve_unsteady_scheme(param: ProblemParameters, n_profile: int):
         a[n_profile - 1, n_profile - 1] = 1.0
         b[n_profile - 1]                = param.c_e
 
-        Cn_plus_1 = np.linalg(a, b)
+        Cn_plus_1 = np.linalg.solve(a, b)
 
         C_hist[n+1, :] = Cn_plus_1
         Cn = Cn_plus_1
