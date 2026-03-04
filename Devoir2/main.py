@@ -25,8 +25,8 @@ def main():
     d_eff = 1e-10      # m^2/s
     k_reac = 4e-9      # 1/s 
     c_e = 20.0         # mol/m^3
-    t_final = 2.0e6    # s
-    dt = 1.0e4         # s
+    t_final = 2.0    # s
+    dt = 1.0e-3         # s
 
     param = ProblemParameters(
     r=r,
@@ -48,7 +48,7 @@ def main():
 
     c0 = 20.0       # mol/m^3
     amp = 2.0       
-    omega = 2.0e-6  # rad/s
+    omega = 3.14  # rad/s
 
     mms = MMSParams(C0=c0, A=amp, omega=omega)
 
@@ -70,7 +70,7 @@ def main():
     plot_mms_source_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
 
     n_list_space = [21, 41, 81, 161, 321]
-    dt_fixed = 1.0e3
+    dt_fixed = 1e-3
 
     space_results = convergence_space(
         problem=param,
@@ -78,9 +78,11 @@ def main():
         num_nodes_list=n_list_space,
         dt_fixed=dt_fixed,
     )
+
+    print("")
     plot_error_convergence_space(space_results)
 
-    dt_list_time = [2.0e5, 1.0e5, 5.0e4, 2.5e4, 1.25e4]
+    dt_list_time = [1e-1, 5e-2, 2.5e-2, 1.25e-2]
     n_fixed_time = 801
 
     time_results = convergence_time(
