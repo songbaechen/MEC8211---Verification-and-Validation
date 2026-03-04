@@ -35,3 +35,52 @@ def error_norms(c_num_hist: np.ndarray,
     linf_norm = float(np.max(np.abs(error)))
 
     return l1_norm, l2_norm, linf_norm
+
+def compute_convergence_orders(
+    step_sizes: list[float],
+    l1_errors: list[float],
+    l2_errors: list[float],
+    linf_errors: list[float],) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calcule les ordres de convergence entre niveaux successifs.
+    """
+    h_vals = np.asarray(step_sizes, dtype=float)
+    e_l1 = np.asarray(l1_errors, dtype=float)
+    e_l2 = np.asarray(l2_errors, dtype=float)
+    e_linf = np.asarray(linf_errors, dtype=float)
+
+    # Tri coarse -> fine (h décroissant)
+    sort_idx = np.argsort(h_vals)[::-1]
+    h_sorted = h_vals[sort_idx]
+    e_l1_sorted = e_l1[sort_idx]
+    e_l2_sorted = e_l2[sort_idx]
+    e_linf_sorted = e_linf[sort_idx]
+
+    p_l1 = np.full(h_sorted.size, np.nan, dtype=float)
+    p_l2 = np.full(h_sorted.size, np.nan, dtype=float)
+    p_linf = np.full(h_sorted.size, np.nan, dtype=float)
+
+    print("\nOrdres de convergence (entre i-1 -> i):")
+    print(" i |   h_{i-1}     h_i   |   p(L1)    p(L2)   p(Linf)")
+    print("-" * 62)
+
+    for idx in range(1, h_sorted.size):
+        ratio_h = h_sorted[idx - 1] / h_sorted[idx]
+        ratio_l1 = e_l1_sorted[idx - 1] / e_l1_sorted[idx]
+        ratio_l2 = e_l2_sorted[idx - 1] / e_l2_sorted[idx]
+        ratio_linf = e_linf_sorted[idx - 1] / e_linf_sorted[idx]
+
+        denom = np.log(ratio_h)
+        if abs(denom) < 1e-15:
+            raise ValueError("Deux pas successifs sont identiques (log(h_{i-1}/h_i)=0).")
+
+        p_l1[idx] = np.log(ratio_l1) / denom
+        p_l2[idx] = np.log(ratio_l2) / denom
+        p_linf[idx] = np.log(ratio_linf) / denom
+
+        print(
+            f"{idx:2d} | {h_sorted[idx-1]:.3e}  {h_sorted[idx]:.3e} |"
+            f" {p_l1[idx]:8.3f}  {p_l2[idx]:8.3f}  {p_linf[idx]:8.3f}"
+        )
+
+    return h_sorted, p_l1, p_l2, p_linf
