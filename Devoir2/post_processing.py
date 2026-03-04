@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from mesh_and_parameters import ProblemParameters
 from finite_differences_schemes import solve_unsteady_scheme
-from mms_solution import*
+from mms_solution import MMSParams, mms_function
 
 
 def error_norms(c_num_hist: np.ndarray, 
@@ -84,3 +84,108 @@ def compute_convergence_orders(
         )
 
     return h_sorted, p_l1, p_l2, p_linf
+
+def convergence_space(
+    problem: ProblemParameters,
+    mms: MMSParams,
+    num_nodes_list: list[int],
+    dt_fixed: float) -> dict:
+    """
+    Étude de convergence en espace
+    """
+
+    dt_saved = float(problem.dt)
+    problem.dt = float(dt_fixed)
+
+    dr_list: list[float] = []
+    l1_list: list[float] = []
+    l2_list: list[float] = []
+    linf_list: list[float] = []
+
+    for num_nodes in num_nodes_list:
+        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes))
+        dr_val = float(r_mesh[1] - r_mesh[0])
+
+        l1_val, l2_val, linf_val = error_norms(c_hist, r_mesh, time_array, problem, mms)
+
+        dr_list.append(dr_val)
+        l1_list.append(l1_val)
+        l2_list.append(l2_val)
+        linf_list.append(linf_val)
+
+        print(
+            f"[SPACE] N={int(num_nodes):5d}  dr={dr_val:.3e} |"
+            f" L1={l1_val:.3e}  L2={l2_val:.3e}  Linf={linf_val:.3e}"
+        )
+
+    problem.dt = dt_saved
+
+    h_sorted, p_l1, p_l2, p_linf = compute_convergence_orders(dr_list, l1_list, l2_list, linf_list)
+
+    sort_idx = np.argsort(np.asarray(dr_list, dtype=float))[::-1]
+    l1_sorted = np.asarray(l1_list, dtype=float)[sort_idx]
+    l2_sorted = np.asarray(l2_list, dtype=float)[sort_idx]
+    linf_sorted = np.asarray(linf_list, dtype=float)[sort_idx]
+
+    return {
+        "h_sorted": h_sorted,
+        "L1_sorted": l1_sorted,
+        "L2_sorted": l2_sorted,
+        "Linf_sorted": linf_sorted,
+        "p_L1": p_l1,
+        "p_L2": p_l2,
+        "p_Linf": p_linf,
+    }
+
+def convergence_time(
+    problem: ProblemParameters,
+    mms: MMSParams,
+    dt_list: list[float],
+    num_nodes_fixed: int) -> dict:
+    """
+    Étude de convergence en temps
+    """
+
+    dt_saved = float(problem.dt)
+
+    dt_used: list[float] = []
+    l1_list: list[float] = []
+    l2_list: list[float] = []
+    linf_list: list[float] = []
+
+    for dt_val in dt_list:
+
+
+        problem.dt = float(dt_val)
+        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes_fixed))
+
+        l1_val, l2_val, linf_val = error_norms(c_hist, r_mesh, time_array, problem, mms)
+
+        dt_used.append(float(dt_val))
+        l1_list.append(l1_val)
+        l2_list.append(l2_val)
+        linf_list.append(linf_val)
+
+        print(
+            f"[TIME]  dt={float(dt_val):.3e} s |"
+            f" L1={l1_val:.3e}  L2={l2_val:.3e}  Linf={linf_val:.3e}"
+        )
+
+    problem.dt = dt_saved
+
+    h_sorted, p_l1, p_l2, p_linf = compute_convergence_orders(dt_used, l1_list, l2_list, linf_list)
+
+    sort_idx = np.argsort(np.asarray(dt_used, dtype=float))[::-1]
+    l1_sorted = np.asarray(l1_list, dtype=float)[sort_idx]
+    l2_sorted = np.asarray(l2_list, dtype=float)[sort_idx]
+    linf_sorted = np.asarray(linf_list, dtype=float)[sort_idx]
+
+    return {
+        "h_sorted": h_sorted,
+        "L1_sorted": l1_sorted,
+        "L2_sorted": l2_sorted,
+        "Linf_sorted": linf_sorted,
+        "p_L1": p_l1,
+        "p_L2": p_l2,
+        "p_Linf": p_linf,
+    }
