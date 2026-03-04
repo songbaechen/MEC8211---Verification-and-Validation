@@ -1,8 +1,20 @@
 """
 Script principal exécutant la simulation et les post-traitements du problème de diffusion.
 """
-from post_processing import plot_profiles, plot_error_norms
 from mesh_and_parameters import ProblemParameters
+from mms_solution import MMSParams
+
+from finite_differences_schemes import solve_unsteady_scheme
+
+from post_processing import (
+    convergence_space,
+    convergence_time,
+    plot_mms_solution_profiles,
+    plot_mms_source_profiles,
+    plot_error_convergence_space,
+    plot_error_convergence_time,
+    plot_heatmaps_num_mms_error,
+)
 
 def main():
     """
@@ -10,24 +22,79 @@ def main():
     """
     # Paramètres
     r = 0.5            # m -> D = 1
-    s = 2e-8           # mol/m^3/s
     d_eff = 1e-10      # m^2/s
+    k_reac = 4e-9      # 1/s 
     c_e = 20.0         # mol/m^3
-    param = ProblemParameters(r=r, s=s, d_eff=d_eff, c_e=c_e)
+    t_final = 2.0e6    # s
+    dt = 1.0e4         # s
 
-    print("=== Paramètres de la simulation ===")
-    print(f"R     = {r} m")
-    print(f"S     = {s} mol/m^3/s")
-    print(f"D_eff = {d_eff} m^2/s")
-    print(f"C_e   = {c_e} mol/m^3")
-    print("==================================\n")
+    param = ProblemParameters(
+    r=r,
+    d_eff=d_eff,
+    k=k_reac,
+    dt=dt,
+    t_final=t_final,
+    c_e=c_e,
+    )
 
-    # (a) Profil de concentration stationnaire
-    plot_profiles(param=param, n_profile=5, plot_1=True, plot_2=True)
+    print("=== Paramètres du problème ===")
+    print(f"R       = {param.r:.6g} m")
+    print(f"D_eff   = {param.d_eff:.6e} m^2/s")
+    print(f"k       = {param.k:.6e} 1/s")
+    print(f"dt      = {param.dt:.6e} s")
+    print(f"t_final = {param.t_final:.6e} s")
+    print(f"C_e     = {param.c_e:.6g}")
+    print("==============================\n")
 
-    # (b) Vérification du code : erreurs L1, L2, L_infini
-    n_profil_list = [5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240]
-    plot_error_norms(param, n_profil_list, plot_1=True, plot_2=True)
+    c0 = 20.0       # mol/m^3
+    amp = 2.0       
+    omega = 2.0e-6  # rad/s
+
+    mms = MMSParams(C0=c0, A=amp, omega=omega)
+
+    print("=== Paramètres MMS ===")
+    print(f"C0    = {mms.C0:.6g}")
+    print(f"A     = {mms.A:.6g}")
+    print(f"omega = {mms.omega:.6e} rad/s")
+    print("======================\n")
+
+    times_to_plot = [
+        0.0,
+        0.25 * param.t_final,
+        0.50 * param.t_final,
+        0.75 * param.t_final,
+        param.t_final,
+    ]
+
+    plot_mms_solution_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
+    plot_mms_source_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
+
+    n_list_space = [21, 41, 81, 161, 321]
+    dt_fixed = 1.0e3
+
+    space_results = convergence_space(
+        problem=param,
+        mms=mms,
+        num_nodes_list=n_list_space,
+        dt_fixed=dt_fixed,
+    )
+    plot_error_convergence_space(space_results)
+
+    dt_list_time = [2.0e5, 1.0e5, 5.0e4, 2.5e4, 1.25e4]
+    n_fixed_time = 801
+
+    time_results = convergence_time(
+        problem=param,
+        mms=mms,
+        dt_list=dt_list_time,
+        num_nodes_fixed=n_fixed_time,
+    )
+    plot_error_convergence_time(time_results)
+
+    n_heatmap = 301
+    r_mesh, time_array, c_hist = solve_unsteady_scheme(param, n_heatmap, mms)
+    plot_heatmaps_num_mms_error(c_hist, r_mesh, time_array, param, mms)
+
 
 
 if __name__ == "__main__":
