@@ -21,8 +21,8 @@ def mms_function(r:float, t:float, R:float, p:MMSParams) -> float:
 
     C0 = p.C0
     A = p.A
-    omerga = p.omega
-    mms_sol = C0 + A * (1.0 - (r/R) ** 2) * np.sin(omerga * t)
+    omega = p.omega
+    mms_sol = C0 + A * (1.0 - (r/R) ** 2) * np.sin(omega * t)
 
     return mms_sol
 
@@ -32,3 +32,17 @@ def dirichlet_bord_mms(t: float, R: float, p: MMSParams) -> float:
     C(R,t)
     """
     return mms_function(R, t, R, p)
+
+def source_term_MMS(r: float, t: float, R: float, D: float, k: float, p: MMSParams) -> float: 
+    """
+    Terme source de la MMS
+    """
+    C0 = p.C0
+    A = p.A
+    omega = p.omega
+    C = mms_function(r, t, R, p)
+
+    # dC/dt
+    dC_dt = A * (1.0 - (r / R) ** 2) * omega * np.cos(omega * t)
+    
+    # Dérivéees en r 
