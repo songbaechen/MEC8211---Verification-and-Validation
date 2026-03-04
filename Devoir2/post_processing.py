@@ -103,7 +103,7 @@ def convergence_space(
     linf_list: list[float] = []
 
     for num_nodes in num_nodes_list:
-        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes))
+        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes), mms)
         dr_val = float(r_mesh[1] - r_mesh[0])
 
         l1_val, l2_val, linf_val = error_norms(c_hist, r_mesh, time_array, problem, mms)
@@ -157,7 +157,7 @@ def convergence_time(
 
 
         problem.dt = float(dt_val)
-        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes_fixed))
+        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes_fixed), mms)
 
         l1_val, l2_val, linf_val = error_norms(c_hist, r_mesh, time_array, problem, mms)
 
