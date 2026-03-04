@@ -57,4 +57,4 @@ def source_term_MMS(r: float, t: float, R: float, D: float, k: float, p: MMSPara
     else: 
         term_2 = Crr + (1.0 / r) * Cr
 
-    return dC_dt - D * term_2 + C
+    return dC_dt - D * term_2 + k * C
