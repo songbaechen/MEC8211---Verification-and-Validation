@@ -35,5 +35,7 @@ class ProblemParameters:
     """
     r: float        # Rayon du cylindre/profil
     d_eff: float    # Coefficient de diffusion
-    s: float        # Quantité de sel
+    k: float        # Réaction du 1er ordre [1/s]
     c_e: float      # Concentration à la surface
+    dt: float       # Pas de temps [s]
+    t_final: float  # Temps final [s]
