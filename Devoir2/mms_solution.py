@@ -1,6 +1,7 @@
 
 
 import numpy as np
+import sympy as sp
 from dataclasses import dataclass
 
 @dataclass
@@ -42,21 +43,33 @@ def source_term_MMS(r: float, t: float, R: float, D: float, k: float, p: MMSPara
     C0 = p.C0
     A = p.A
     omega = p.omega
-    C = mms_function(r, t, R, p)
 
-    # dC/dt
-    dC_dt = A * (1.0 - (r / R) ** 2) * omega * np.cos(omega * t)
-    
-    # Dérivéees en r 
-    Cr = A * (-2.0 * r / (R ** 2)) * np.sin(omega * t)
-    Crr = A * (-2.0 / (R ** 2)) * np.sin(omega * t)
+    # variables symboliques
+    rs, ts, Rs, C0s, As, omegas = sp.symbols('rs ts Rs C0 A omega')
 
-    # quand r -> 0, on fait la limite 
-    terme_r_0 = (-4.0 * A / (R ** 2)) * np.sin(omega * t)
+    # MMS 
+    C = C0s + As*(1 - (rs/Rs)**2)*sp.sin(omegas*ts)*(Rs-rs)*(rs**2)
 
-    if abs(r) < 1e-14: 
-        term_2 = terme_r_0
-    else: 
-        term_2 = Crr + (1.0 / r) * Cr
+    # dérivées symboliques
+    dC_dt = sp.diff(C, ts)
+    Cr = sp.diff(C, rs)
+    Crr = sp.diff(Cr, rs)
 
-    return dC_dt - D * term_2 + k * C
+    term2 = Crr + (1/rs)*Cr
+    terme_r_0 = sp.limit(term2, rs, 0)
+
+    # substitution valeurs
+    subs = {rs:r, ts:t, Rs:R, C0s:C0, As:A, omegas:omega}
+
+    C_val = float(C.subs(subs))
+    dC_dt_val = float(dC_dt.subs(subs))
+    Cr_val = float(Cr.subs(subs))
+    Crr_val = float(Crr.subs(subs))
+    terme_r_0_val = float(terme_r_0.subs({ts:t, Rs:R, C0s:C0, As:A, omegas:omega}))
+
+    if abs(r) < 1e-14:
+        term_2 = terme_r_0_val
+    else:
+        term_2 = Crr_val + (1.0/r)*Cr_val
+
+    return dC_dt_val - D*term_2 + k*C_val
