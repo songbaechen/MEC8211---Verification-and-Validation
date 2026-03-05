@@ -22,7 +22,9 @@ def mms_function(r:float, t:float, R:float, p:MMSParams) -> float:
     C0 = p.C0
     A = p.A
     omega = p.omega
-    mms_sol = C0 + A * (1.0 - (r/R) ** 2) * np.sin(omega * t)
+    dirichlet_BC_curve = R
+    neumann_BC_curve = 0.0
+    mms_sol = C0 + A * (1.0 - (r/R) ** 2) * np.sin(omega * t) * (dirichlet_BC_curve - r)**1 * (neumann_BC_curve - r)**2
 
     return mms_sol
 
