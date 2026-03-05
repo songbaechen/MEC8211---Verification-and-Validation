@@ -69,8 +69,8 @@ def main():
     plot_mms_solution_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
     plot_mms_source_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
 
-    n_list_space = [21, 41, 81, 161, 321]
-    dt_fixed = 1e-3
+    n_list_space = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    dt_fixed = 1e-4
 
     space_results = convergence_space(
         problem=param,
@@ -83,7 +83,7 @@ def main():
     plot_error_convergence_space(space_results)
 
     dt_list_time = [1e-1, 5e-2, 2.5e-2, 1.25e-2]
-    n_fixed_time = 801
+    n_fixed_time = 30
 
     time_results = convergence_time(
         problem=param,
@@ -93,7 +93,7 @@ def main():
     )
     plot_error_convergence_time(time_results)
 
-    n_heatmap = 301
+    n_heatmap = 20
     r_mesh, time_array, c_hist = solve_unsteady_scheme(param, n_heatmap, mms)
     plot_heatmaps_num_mms_error(c_hist, r_mesh, time_array, param, mms)
 

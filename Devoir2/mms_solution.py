@@ -36,40 +36,39 @@ def dirichlet_bord_mms(t: float, R: float, p: MMSParams) -> float:
     """
     return mms_function(R, t, R, p)
 
-def source_term_MMS(r: float, t: float, R: float, D: float, k: float, p: MMSParams) -> float: 
-    """
-    Terme source de la MMS
-    """
-    C0 = p.C0
-    A = p.A
-    omega = p.omega
+def build_source_term_MMS():
 
-    # variables symboliques
-    rs, ts, Rs, C0s, As, omegas = sp.symbols('rs ts Rs C0 A omega')
+    rs, ts, Rs, C0s, As, omegas, Ds, ks = sp.symbols(
+        "rs ts Rs C0 A omega D k"
+    )
 
-    # MMS 
     C = C0s + As*(1 - (rs/Rs)**2)*sp.sin(omegas*ts)*(Rs-rs)*(rs**2)
 
-    # dérivées symboliques
     dC_dt = sp.diff(C, ts)
     Cr = sp.diff(C, rs)
     Crr = sp.diff(Cr, rs)
 
     term2 = Crr + (1/rs)*Cr
-    terme_r_0 = sp.limit(term2, rs, 0)
+    term_r0 = sp.limit(term2, rs, 0)
 
-    # substitution valeurs
-    subs = {rs:r, ts:t, Rs:R, C0s:C0, As:A, omegas:omega}
+    lap = sp.Piecewise((term_r0, sp.Eq(rs,0)), (term2, True))
 
-    C_val = float(C.subs(subs))
-    dC_dt_val = float(dC_dt.subs(subs))
-    Cr_val = float(Cr.subs(subs))
-    Crr_val = float(Crr.subs(subs))
-    terme_r_0_val = float(terme_r_0.subs({ts:t, Rs:R, C0s:C0, As:A, omegas:omega}))
+    S = sp.simplify(dC_dt - Ds*lap + ks*C)
+
+    return sp.lambdify(
+        (rs, ts, Rs, Ds, ks, C0s, As, omegas),
+        S,
+        modules="numpy"
+    )
+
+
+source_term = build_source_term_MMS()
+
+def source_term_MMS(r, t, R, D, k, p) -> float:
 
     if abs(r) < 1e-14:
-        term_2 = terme_r_0_val
-    else:
-        term_2 = Crr_val + (1.0/r)*Cr_val
+        r = 0.0
 
-    return dC_dt_val - D*term_2 + k*C_val
+    return float(
+        source_term( r,t,R,D,k,p.C0,p.A, p.omega)
+    )
