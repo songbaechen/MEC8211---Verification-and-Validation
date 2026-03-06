@@ -22,10 +22,10 @@ def main():
     """
     # Paramètres
     r = 0.5            # m -> D = 1
-    d_eff = 1e-10      # m^2/s
-    k_reac = 4e-9      # 1/s 
+    d_eff = 1 # 1e-10      # m^2/s
+    k_reac = 4 # 4e-9      # 1/s
     c_e = 20.0         # mol/m^3
-    t_final = 2.0    # s
+    t_final = 1.0 # 2.0    # s
     dt = 1.0e-3         # s
 
     param = ProblemParameters(
@@ -69,7 +69,7 @@ def main():
     plot_mms_solution_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
     plot_mms_source_profiles(param, mms, num_nodes=200, times_to_plot=times_to_plot)
 
-    n_list_space = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    n_list_space = [5, 10, 50, 100, 500, 1000] #, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     dt_fixed = 1e-4
 
     space_results = convergence_space(
@@ -82,7 +82,7 @@ def main():
     print("")
     plot_error_convergence_space(space_results)
 
-    dt_list_time = [1e-1, 5e-2, 2.5e-2, 1.25e-2]
+    dt_list_time = [1e-1, 5e-2] #, 2.5e-2, 1.25e-2]
     n_fixed_time = 30
 
     time_results = convergence_time(

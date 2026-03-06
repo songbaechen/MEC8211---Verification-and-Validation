@@ -6,6 +6,7 @@ import numpy as np
 from mesh_and_parameters import ProblemParameters, create_mesh
 from mms_solution import MMSParams, mms_function, dirichlet_bord_mms, source_term_MMS
 
+
 def solve_unsteady_scheme(param: ProblemParameters, n_profile: int, mms: MMSParams | None = None):
     """
     Fonction calculant la concentration du profil avec un schéma d'ordre 2.

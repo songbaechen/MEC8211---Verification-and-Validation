@@ -201,7 +201,7 @@ def plot_mms_solution_profiles(
 
     r_mesh = np.linspace(0.0, float(problem.r), int(num_nodes))
 
-    plt.figure(dpi=300)
+    plt.figure(dpi=100)
 
     for t_val in times_to_plot:
         c_vals = [
@@ -232,7 +232,7 @@ def plot_mms_source_profiles(
     d_eff = float(problem.d_eff)
     k_reac = float(problem.k)
 
-    plt.figure(dpi=300)
+    plt.figure(dpi=100)
 
     for t_val in times_to_plot:
         s_vals = [
@@ -265,7 +265,7 @@ def plot_error_convergence_space(space_results: dict):
     l2_sorted = np.asarray(space_results["L2_sorted"], dtype=float)
     linf_sorted = np.asarray(space_results["Linf_sorted"], dtype=float)
 
-    plt.figure(dpi=220)
+    plt.figure(dpi=100)
     plt.loglog(h_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
     plt.loglog(h_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
     plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="Linf")
@@ -288,7 +288,7 @@ def plot_error_convergence_time(time_results: dict):
     l2_sorted = np.asarray(time_results["L2_sorted"], dtype=float)
     linf_sorted = np.asarray(time_results["Linf_sorted"], dtype=float)
 
-    plt.figure(dpi=220)
+    plt.figure(dpi=100)
     plt.loglog(h_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
     plt.loglog(h_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
     plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="Linf")
