@@ -1,7 +1,6 @@
 """
 Script principal exécutant la simulation et les post-traitements du problème de diffusion.
 """
-from Devoir2.mms_solution import mms_function
 from mesh_and_parameters import ProblemParameters
 from mms_solution import MMSParams, mms_iteration
 
@@ -10,11 +9,11 @@ from finite_differences_schemes import solve_unsteady_scheme
 from post_processing import (
     error_norms,
     compute_convergence_orders,
-    plot_mms_solution_profiles,
-    plot_mms_source_profiles,
     plot_error_convergence_space,
     plot_error_convergence_time,
     plot_heatmaps_num_mms_error,
+    plot_mms_solution_profiles,
+    plot_mms_source_profiles
 )
 
 
@@ -47,8 +46,8 @@ def main():
         0.75 * param_normal.t_final,
         param_normal.t_final,
     ]
-    # plot_mms_solution_profiles(param_normal, mms_param, num_nodes=200, times_to_plot=times_to_plot)
-    # plot_mms_source_profiles(param_normal, mms_param, num_nodes=200, times_to_plot=times_to_plot)
+    plot_mms_solution_profiles(param_normal, mms_param, num_nodes=200, times_to_plot=times_to_plot)
+    plot_mms_source_profiles(param_normal, mms_param, num_nodes=200, times_to_plot=times_to_plot)
 
     """ SPACE CONVERGENCE """
     n_profile_list = [5, 10, 20, 50]
@@ -88,7 +87,7 @@ def main():
         L2_space[h] = errors_tmp[1]
         L_inf_space[h] = errors_tmp[2]
 
-    h_sorted_space, p_l1_space, p_l2_space, p_l_inf_space = compute_convergence_orders(
+    _, _, _, _ = compute_convergence_orders(
         l1_errors_dict=L1_space,
         l2_errors_dict=L2_space,
         linf_errors_dict=L_inf_space
@@ -135,7 +134,7 @@ def main():
         L2_time[float(dt)] = errors_tmp[1]
         L_inf_time[float(dt)] = errors_tmp[2]
 
-    h_sorted_time, p_l1_time, p_l2_time, p_l_inf_time = compute_convergence_orders(
+    _, _, _, _ = compute_convergence_orders(
         l1_errors_dict=L1_time,
         l2_errors_dict=L2_time,
         linf_errors_dict=L_inf_time
