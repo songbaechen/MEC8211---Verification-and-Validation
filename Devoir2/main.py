@@ -1,6 +1,7 @@
 """
 Script principal exécutant la simulation et les post-traitements du problème de diffusion.
 """
+import numpy as np
 from mesh_and_parameters import ProblemParameters
 from mms_solution import MMSParams, mms_iteration
 
@@ -13,7 +14,8 @@ from post_processing import (
     plot_error_convergence_time,
     plot_heatmaps_num_mms_error,
     plot_mms_solution_profiles,
-    plot_mms_source_profiles
+    plot_mms_source_profiles, 
+    plot_original_problem_profiles
 )
 
 
@@ -30,28 +32,28 @@ def main():
         d_eff=1e-10,
         k=4e-9,
         c_e=20,
-        t_final=2.0,
+        t_final=4e9,
     )
     mms_param = MMSParams(
         C0=20.0,
         A=2.0,
-        omega=3.14
+        omega=1
     )
 
     """ PLOT MMS AND SOURCE TERM """
     times_to_plot = [
         0.0,
-        0.25 * param_normal.t_final,
-        0.50 * param_normal.t_final,
-        0.75 * param_normal.t_final,
-        param_normal.t_final,
+        0.25 * param_etude_conv.t_final,
+        0.50 * param_etude_conv.t_final,
+        0.75 * param_etude_conv.t_final,
+        param_etude_conv.t_final,
     ]
-    plot_mms_solution_profiles(param_normal, mms_param, num_nodes=200, times_to_plot=times_to_plot)
-    plot_mms_source_profiles(param_normal, mms_param, num_nodes=200, times_to_plot=times_to_plot)
+    plot_mms_solution_profiles(param_etude_conv, mms_param, num_nodes=200, times_to_plot=times_to_plot)
+    plot_mms_source_profiles(param_etude_conv, mms_param, num_nodes=200, times_to_plot=times_to_plot)
 
     """ SPACE CONVERGENCE """
-    n_profile_list = [5, 10, 20, 50]
-    dt_space_convergence = 1e-3
+    n_profile_list = [5, 10, 20, 50, 100, 150, 200, 250, 300]
+    dt_space_convergence = 1e-4
     # n_profile_list = [5, 10, 20, 50, 100, 200, 400, 500]
     # dt_fixed = 1e-5
 
@@ -100,8 +102,8 @@ def main():
 
 
     """ TIME CONVERGENCE """
-    dt_list_time = [1e-1, 5e-2, 1e-2]
-    n_profile_time = 50
+    dt_list_time = [1e-1, 5e-2, 1e-2, 5e-3, 1e-3, 5e-4]
+    n_profile_time = 800
 
     L1_time = {}
     L2_time = {}
@@ -146,13 +148,24 @@ def main():
     )
 
     """ HEATMAP """
-    n_profile_heatmap = 25
-    dt_heatmap = 5e-2
+    n_profile_heatmap = 800
+    dt_heatmap = 5e-4
     plot_heatmaps_num_mms_error(
         param=param_etude_conv,
         n_profile=n_profile_heatmap,
         dt=dt_heatmap,
         mms=mms_param
+    )
+
+    """ ORIGINAL PROBLEM PLOT  """
+
+    times_original = np.linspace(0, param_normal.t_final, 10)
+
+    plot_original_problem_profiles(
+        param=param_normal,
+        n_profile=11,
+        dt=5e6,
+        times_to_plot=times_original
     )
 
 if __name__ == "__main__":

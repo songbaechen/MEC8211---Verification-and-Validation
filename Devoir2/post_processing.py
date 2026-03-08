@@ -468,3 +468,45 @@ def plot_heatmaps_num_mms_error(
 
     fig.tight_layout()
     plt.show()
+
+def plot_original_problem_profiles(
+    param: ProblemParameters,
+    n_profile: int,
+    dt: float,
+    times_to_plot: list[float]
+) -> None:
+    """
+    Trace les profils de concentration du problème original (sans MMS)
+    pour plusieurs temps donnés.
+
+    Parameters
+    ----------
+    param : ProblemParameters
+        Paramètres physiques du problème original.
+    n_profile : int
+        Nombre de noeuds radiaux.
+    dt : float
+        Pas de temps utilisé pour la simulation.
+    times_to_plot : list[float]
+        Liste des temps auxquels on veut tracer les profils.
+    """
+    r_mesh, time_array, c_hist = solve_unsteady_scheme(
+        param=param,
+        n_profile=n_profile,
+        dt=dt,
+        mms=None
+    )
+
+    plt.figure(dpi=100)
+
+    for t_val in times_to_plot:
+        idx = int(np.argmin(np.abs(time_array - t_val)))
+        plt.plot(r_mesh, c_hist[idx, :], label=f"t={time_array[idx]:.2e} s")
+
+    plt.xlabel("r [m]")
+    plt.ylabel("C(r,t)")
+    plt.title("Solution du problème original")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
