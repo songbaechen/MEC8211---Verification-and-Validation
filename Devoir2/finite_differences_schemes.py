@@ -1,72 +1,113 @@
 """
-Schémas numériques d'ordre 2 pour la diffusion radiale.
+Schéma numérique implicite d'ordre 2 en espace pour la diffusion radiale.
+
+Ce module contient la fonction de résolution transitoire du problème de
+diffusion-réaction en coordonnées radiales, avec possibilité d'utiliser une
+solution manufacturée (MMS) pour la vérification du code.
 """
+
 import numpy as np
 
 from mesh_and_parameters import ProblemParameters, create_mesh
 from mms_solution import MMSParams, mms_function, dirichlet_bord_mms, source_term_MMS
 
 
-def solve_unsteady_scheme(param: ProblemParameters, n_profile: int, mms: MMSParams | None = None):
+def solve_unsteady_scheme(
+    param: ProblemParameters,
+    n_profile: int,
+    dt: float,
+    mms: MMSParams | None = None
+):
     """
-    Fonction calculant la concentration du profil avec un schéma d'ordre 2.
-    Retourne le maillage et un array contenant les concentrations aux nœuds résolu numériquement.
+    Résout le problème transitoire de diffusion-réaction radiale.
 
-    :param param: Data class contenant les paramètres de la simulation [ProblemParameters]
-    :param n_profile: Nombre de nœuds [int]
+    La discrétisation temporelle est implicite, tandis que la discrétisation
+    spatiale utilise un schéma centré d'ordre 2 pour les nœuds intérieurs.
+    La condition de symétrie au centre est imposée par une condition de
+    Neumann, et la condition au bord externe est de type Dirichlet.
 
-    :return: r_mesh, c_array [tuple[np.ndarray, np.ndarray]]
+    Si un jeu de paramètres MMS est fourni, la condition initiale, le terme
+    source et la condition de bord sont construits à partir de la solution
+    manufacturée.
+
+    Parameters
+    ----------
+    param : ProblemParameters
+        Structure contenant les paramètres physiques du problème
+        (rayon, diffusivité effective, coefficient de réaction, temps final,
+        concentration au bord, etc.).
+    n_profile : int
+        Nombre de nœuds du maillage radial.
+    dt : float
+        Pas de temps utilisé pour l'intégration temporelle.
+    mms : MMSParams | None, optional
+        Paramètres associés à la solution manufacturée. Si `None`, le problème
+        physique standard est résolu.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+        Un tuple contenant :
+        - `r_mesh` : le maillage radial ;
+        - `t` : le vecteur temps ;
+        - `c_hist` : l'historique temporel de la concentration, de dimension
+          `(nt, n_profile)`.
     """
-    r_mesh, dr = create_mesh(param.r, n_profile)
-
+    # Initialisation des paramètres physiques
     D = float(param.d_eff)
     k = float(param.k)
-    dt = float(param.dt)
     t_final = float(param.t_final)
 
-    Nt = int(np.ceil(t_final / dt)) + 1
-    t = np.linspace(0.0, dt*(Nt-1), Nt)
+    # Construction du maillage radial et du vecteur temps
+    r_mesh, dr = create_mesh(param.r, n_profile)
+    nt = int(np.ceil(t_final / dt)) + 1
+    t = np.linspace(0.0, dt * (nt - 1), nt)
 
-    # C(r,0) = 0
+    # Condition initiale
+    # Problème physique : C(r, 0) = 0
+    # Cas MMS : C(r, 0) = C0 ; imposée par la solution manufacturée
     if mms is None:
-        Cn = np.zeros(n_profile, dtype=np.float64)
+        cn = np.zeros(n_profile, dtype=np.float64)
     else:
-        Cn = np.array(
-        [mms_function(float(r_i), 0.0, float(param.r), mms) for r_i in r_mesh],
-        dtype=np.float64
-    )
+        cn = np.array(
+            [mms_function(float(r_i), 0.0, float(param.r), mms) for r_i in r_mesh],
+            dtype=np.float64
+        )
 
-    C_hist = np.zeros((Nt, n_profile), dtype=np.float64)
-    C_hist[0, :] = Cn.copy()
+    # Stockage de l'historique temporel de la solution
+    c_hist = np.zeros((nt, n_profile), dtype=np.float64)
+    c_hist[0, :] = cn.copy()
 
-    for n in range(Nt - 1): 
-
+    for n in range(nt - 1):
         t_np1 = float(t[n + 1])
-        a = np.zeros((n_profile, n_profile), dtype=np.float64)  
-        b = np.zeros(n_profile, dtype=np.float64)                    
 
-        # Boundary conditions au centre
+        # Initialisation du système linéaire A * C^{n+1} = b
+        a = np.zeros((n_profile, n_profile), dtype=np.float64)
+        b = np.zeros(n_profile, dtype=np.float64)
+
+        # Condition de Neumann au centre (symétrie)
+        # Approximation décentrée d'ordre 2 :
+        # dC/dr = 0 => -3C0 + 4C1 - C2 = 0
         a[0, 0] = -3.0
-        a[0, 1] =  4.0
+        a[0, 1] = 4.0
         a[0, 2] = -1.0
         b[0] = 0.0
 
-        # Noeuds internes
-        for i in range(1, n_profile -1): 
-            
+        # Assemblage des équations aux nœuds intérieurs
+        for i in range(1, n_profile - 1):
             ri = r_mesh[i]
 
-            L_i_moins_1 = (1.0 / dr**2) - (1.0 / (2.0 * dr * ri))
-            L_i = -2.0 / dr**2
-            L_i_plus_1 = (1.0 / dr**2) + (1.0 / (2.0 * dr * ri))
+            l_i_moins_1 = (1.0 / dr**2) - (1.0 / (2.0 * dr * ri))
+            l_i = -2.0 / dr**2
+            l_i_plus_1 = (1.0 / dr**2) + (1.0 / (2.0 * dr * ri))
 
-            a[i, i-1] = -D * L_i_moins_1
-            a[i, i] = (1.0/dt + k) - D*L_i
-            a[i, i + 1] = -D * L_i_plus_1
+            a[i, i - 1] = -D * l_i_moins_1
+            a[i, i] = (1.0 / dt + k) - D * l_i
+            a[i, i + 1] = -D * l_i_plus_1
 
-            b[i] = (1.0 / dt) * Cn[i]
+            b[i] = (1.0 / dt) * cn[i]
 
-            # Source MMS
+            # Ajout du terme source dans le cas MMS
             if mms is not None:
                 b[i] += source_term_MMS(
                     ri,
@@ -77,17 +118,20 @@ def solve_unsteady_scheme(param: ProblemParameters, n_profile: int, mms: MMSPara
                     mms,
                 )
 
-        # condition de Dirichlet au bord
-        a[n_profile - 1, :]             = 0.0
+        # Condition de Dirichlet au bord externe
+        a[n_profile - 1, :] = 0.0
         a[n_profile - 1, n_profile - 1] = 1.0
+
         if mms is None:
             b[n_profile - 1] = float(param.c_e)
         else:
             b[n_profile - 1] = dirichlet_bord_mms(t_np1, float(param.r), mms)
 
-        Cn_plus_1 = np.linalg.solve(a, b)
+        # Résolution du système linéaire au temps n+1
+        cn_plus_1 = np.linalg.solve(a, b)
 
-        C_hist[n+1, :] = Cn_plus_1
-        Cn = Cn_plus_1
+        # Mise à jour de l'historique et de la solution courante
+        c_hist[n + 1, :] = cn_plus_1
+        cn = cn_plus_1
 
-    return r_mesh, t , C_hist
+    return r_mesh, t, c_hist

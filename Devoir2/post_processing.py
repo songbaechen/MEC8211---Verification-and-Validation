@@ -6,55 +6,105 @@ import matplotlib.pyplot as plt
 
 from mesh_and_parameters import ProblemParameters
 from finite_differences_schemes import solve_unsteady_scheme
-from mms_solution import MMSParams, mms_function, source_term_MMS
+from mms_solution import MMSParams, mms_function, source_term_MMS, mms_iteration
 
 
-def error_norms(c_num_hist: np.ndarray, 
-    r_mesh: np.ndarray, 
-    time_array: np.ndarray,
-    problem: ProblemParameters,
-    mms: MMSParams,) -> tuple[float, float, float]:
+def error_norms(
+    c_num_hist: np.ndarray,
+    c_mms_hist: np.ndarray,
+    r_mesh: np.ndarray,
+    time_array: np.ndarray
+) -> tuple[float, float, float]:
     """
-    Retourne les erreurs L1, L2 et L_inf (espace x temps)
+    Calcule les normes d'erreur L1, L2 et L_inf entre la solution numérique
+    et la solution manufacturée déjà évaluée sur la grille espace-temps.
+
+    Les deux tableaux doivent avoir le même format, soit `(nt, n_profile)`.
+
+    Parameters
+    ----------
+    c_num_hist : np.ndarray
+        Historique temporel de la solution numérique.
+    c_mms_hist : np.ndarray
+        Historique temporel de la solution manufacturée évaluée sur la même
+        grille espace-temps que la solution numérique.
+    r_mesh : np.ndarray
+        Maillage radial.
+    time_array : np.ndarray
+        Vecteur temps.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        Les normes d'erreur L1, L2 et L_inf.
     """
-    num_time_steps, num_nodes = c_num_hist.shape
+    if c_num_hist.shape != c_mms_hist.shape:
+        raise ValueError(
+            "c_num_hist et c_mms_hist doivent avoir la même dimension."
+        )
+
+    if len(r_mesh) < 2 or len(time_array) < 2:
+        raise ValueError(
+            "r_mesh et time_array doivent contenir au moins deux points."
+        )
+
     dr = float(r_mesh[1] - r_mesh[0])
     dt = float(time_array[1] - time_array[0])
 
-    error = np.zeros_like(c_num_hist, dtype=float)
-
-    for n_idx in range(num_time_steps):
-        t_n = float(time_array[n_idx])
-        for i_idx in range(num_nodes):
-            r_i = float(r_mesh[i_idx])
-            c_exact = mms_function(r_i, t_n, float(problem.r), mms)
-            error[n_idx, i_idx] = c_num_hist[n_idx, i_idx] - c_exact
+    error = c_num_hist - c_mms_hist
 
     l1_norm = float(np.sum(np.abs(error)) * dr * dt)
-    l2_norm = float(np.sqrt(np.sum(error**2) * dr * dt))
+    l2_norm = float(np.sqrt(np.sum(error ** 2) * dr * dt))
     linf_norm = float(np.max(np.abs(error)))
 
     return l1_norm, l2_norm, linf_norm
 
-def compute_convergence_orders(
-    step_sizes: list[float],
-    l1_errors: list[float],
-    l2_errors: list[float],
-    linf_errors: list[float],) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Calcule les ordres de convergence entre niveaux successifs.
-    """
-    h_vals = np.asarray(step_sizes, dtype=float)
-    e_l1 = np.asarray(l1_errors, dtype=float)
-    e_l2 = np.asarray(l2_errors, dtype=float)
-    e_linf = np.asarray(linf_errors, dtype=float)
 
-    # Tri coarse -> fine (h décroissant)
-    sort_idx = np.argsort(h_vals)[::-1]
-    h_sorted = h_vals[sort_idx]
-    e_l1_sorted = e_l1[sort_idx]
-    e_l2_sorted = e_l2[sort_idx]
-    e_linf_sorted = e_linf[sort_idx]
+def compute_convergence_orders(
+    l1_errors_dict: dict[float, float],
+    l2_errors_dict: dict[float, float],
+    linf_errors_dict: dict[float, float]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calcule les ordres de convergence entre niveaux successifs à partir de
+    dictionnaires d'erreurs indexés par la taille de pas h.
+
+    Les dictionnaires doivent contenir les erreurs L1, L2 et L_inf associées
+    aux mêmes valeurs de h. Les valeurs de h sont triées du maillage le plus
+    grossier au plus fin avant le calcul des ordres.
+
+    Parameters
+    ----------
+    l1_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L1, indexées par h.
+    l2_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L2, indexées par h.
+    linf_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L_inf, indexées par h.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        Un tuple contenant :
+        - `h_sorted` : les tailles de pas triées du plus grand au plus petit ;
+        - `p_l1` : les ordres de convergence associés à la norme L1 ;
+        - `p_l2` : les ordres de convergence associés à la norme L2 ;
+        - `p_linf` : les ordres de convergence associés à la norme L_inf.
+    """
+    h_keys_l1 = set(l1_errors_dict.keys())
+    h_keys_l2 = set(l2_errors_dict.keys())
+    h_keys_linf = set(linf_errors_dict.keys())
+
+    if h_keys_l1 != h_keys_l2 or h_keys_l1 != h_keys_linf:
+        raise ValueError(
+            "Les dictionnaires d'erreurs doivent contenir exactement les mêmes valeurs de h."
+        )
+
+    h_sorted = np.array(sorted(h_keys_l1, reverse=True), dtype=float)
+
+    e_l1_sorted = np.array([l1_errors_dict[h] for h in h_sorted], dtype=float)
+    e_l2_sorted = np.array([l2_errors_dict[h] for h in h_sorted], dtype=float)
+    e_linf_sorted = np.array([linf_errors_dict[h] for h in h_sorted], dtype=float)
 
     p_l1 = np.full(h_sorted.size, np.nan, dtype=float)
     p_l2 = np.full(h_sorted.size, np.nan, dtype=float)
@@ -72,123 +122,21 @@ def compute_convergence_orders(
 
         denom = np.log(ratio_h)
         if abs(denom) < 1e-15:
-            raise ValueError("Deux pas successifs sont identiques (log(h_{i-1}/h_i)=0).")
+            raise ValueError(
+                "Deux pas successifs sont identiques (log(h_{i-1}/h_i)=0)."
+            )
 
         p_l1[idx] = np.log(ratio_l1) / denom
         p_l2[idx] = np.log(ratio_l2) / denom
         p_linf[idx] = np.log(ratio_linf) / denom
 
         print(
-            f"{idx:2d} | {h_sorted[idx-1]:.3e}  {h_sorted[idx]:.3e} |"
+            f"{idx:2d} | {h_sorted[idx - 1]:.3e}  {h_sorted[idx]:.3e} |"
             f" {p_l1[idx]:8.3f}  {p_l2[idx]:8.3f}  {p_linf[idx]:8.3f}"
         )
 
     return h_sorted, p_l1, p_l2, p_linf
 
-def convergence_space(
-    problem: ProblemParameters,
-    mms: MMSParams,
-    num_nodes_list: list[int],
-    dt_fixed: float) -> dict:
-    """
-    Étude de convergence en espace
-    """
-
-    dt_saved = float(problem.dt)
-    problem.dt = float(dt_fixed)
-
-    dr_list: list[float] = []
-    l1_list: list[float] = []
-    l2_list: list[float] = []
-    linf_list: list[float] = []
-
-    for num_nodes in num_nodes_list:
-        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes), mms)
-        dr_val = float(r_mesh[1] - r_mesh[0])
-
-        l1_val, l2_val, linf_val = error_norms(c_hist, r_mesh, time_array, problem, mms)
-
-        dr_list.append(dr_val)
-        l1_list.append(l1_val)
-        l2_list.append(l2_val)
-        linf_list.append(linf_val)
-
-        print(
-            f"[SPACE] N={int(num_nodes):5d}  dr={dr_val:.3e} |"
-            f" L1={l1_val:.3e}  L2={l2_val:.3e}  Linf={linf_val:.3e}"
-        )
-
-    problem.dt = dt_saved
-
-    h_sorted, p_l1, p_l2, p_linf = compute_convergence_orders(dr_list, l1_list, l2_list, linf_list)
-
-    sort_idx = np.argsort(np.asarray(dr_list, dtype=float))[::-1]
-    l1_sorted = np.asarray(l1_list, dtype=float)[sort_idx]
-    l2_sorted = np.asarray(l2_list, dtype=float)[sort_idx]
-    linf_sorted = np.asarray(linf_list, dtype=float)[sort_idx]
-
-    return {
-        "h_sorted": h_sorted,
-        "L1_sorted": l1_sorted,
-        "L2_sorted": l2_sorted,
-        "Linf_sorted": linf_sorted,
-        "p_L1": p_l1,
-        "p_L2": p_l2,
-        "p_Linf": p_linf,
-    }
-
-def convergence_time(
-    problem: ProblemParameters,
-    mms: MMSParams,
-    dt_list: list[float],
-    num_nodes_fixed: int) -> dict:
-    """
-    Étude de convergence en temps
-    """
-
-    dt_saved = float(problem.dt)
-
-    dt_used: list[float] = []
-    l1_list: list[float] = []
-    l2_list: list[float] = []
-    linf_list: list[float] = []
-
-    for dt_val in dt_list:
-
-
-        problem.dt = float(dt_val)
-        r_mesh, time_array, c_hist = solve_unsteady_scheme(problem, int(num_nodes_fixed), mms)
-
-        l1_val, l2_val, linf_val = error_norms(c_hist, r_mesh, time_array, problem, mms)
-
-        dt_used.append(float(dt_val))
-        l1_list.append(l1_val)
-        l2_list.append(l2_val)
-        linf_list.append(linf_val)
-
-        print(
-            f"[TIME]  dt={float(dt_val):.3e} s |"
-            f" L1={l1_val:.3e}  L2={l2_val:.3e}  Linf={linf_val:.3e}"
-        )
-
-    problem.dt = dt_saved
-
-    h_sorted, p_l1, p_l2, p_linf = compute_convergence_orders(dt_used, l1_list, l2_list, linf_list)
-
-    sort_idx = np.argsort(np.asarray(dt_used, dtype=float))[::-1]
-    l1_sorted = np.asarray(l1_list, dtype=float)[sort_idx]
-    l2_sorted = np.asarray(l2_list, dtype=float)[sort_idx]
-    linf_sorted = np.asarray(linf_list, dtype=float)[sort_idx]
-
-    return {
-        "h_sorted": h_sorted,
-        "L1_sorted": l1_sorted,
-        "L2_sorted": l2_sorted,
-        "Linf_sorted": linf_sorted,
-        "p_L1": p_l1,
-        "p_L2": p_l2,
-        "p_Linf": p_linf,
-    }
 
 def plot_mms_solution_profiles(
     problem: ProblemParameters,
@@ -256,46 +204,161 @@ def plot_mms_source_profiles(
     plt.tight_layout()
     plt.show()
 
-def plot_error_convergence_space(space_results: dict):
+
+def plot_error_convergence_space(
+    l1_errors_dict: dict[float, float],
+    l2_errors_dict: dict[float, float],
+    linf_errors_dict: dict[float, float],
+    show_reference: bool = True,
+    ordre_theorique: float = 2.0
+) -> None:
     """
-    Plot Log-log des erreurs (L1, L2, Linf) en fonction de dr.
+    Trace les erreurs spatiales en échelle log-log.
+
+    Les erreurs L1, L2 et L_inf sont fournies sous forme de dictionnaires
+    indexés par le pas spatial h = Δr. Une droite de référence correspondant
+    à l'ordre théorique attendu peut être affichée pour faciliter l'analyse
+    de la convergence.
+
+    Parameters
+    ----------
+    l1_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L1 indexées par h.
+    l2_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L2 indexées par h.
+    linf_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L_inf indexées par h.
+    show_reference : bool, optional
+        Active ou désactive l'affichage de la pente théorique. Par défaut True.
+    ordre_theorique : float, optional
+        Ordre théorique utilisé pour tracer la pente de référence. Par défaut 2.
+
+    Returns
+    -------
+    None
+        Affiche directement la figure.
     """
-    h_sorted = np.asarray(space_results["h_sorted"], dtype=float)
-    l1_sorted = np.asarray(space_results["L1_sorted"], dtype=float)
-    l2_sorted = np.asarray(space_results["L2_sorted"], dtype=float)
-    linf_sorted = np.asarray(space_results["Linf_sorted"], dtype=float)
+
+    h_keys_l1 = set(l1_errors_dict.keys())
+    h_keys_l2 = set(l2_errors_dict.keys())
+    h_keys_linf = set(linf_errors_dict.keys())
+
+    if h_keys_l1 != h_keys_l2 or h_keys_l1 != h_keys_linf:
+        raise ValueError(
+            "Les dictionnaires d'erreurs doivent contenir exactement les mêmes valeurs de h."
+        )
+
+    h_sorted = np.array(sorted(h_keys_l1, reverse=True), dtype=float)
+
+    l1_sorted = np.array([l1_errors_dict[h] for h in h_sorted], dtype=float)
+    l2_sorted = np.array([l2_errors_dict[h] for h in h_sorted], dtype=float)
+    linf_sorted = np.array([linf_errors_dict[h] for h in h_sorted], dtype=float)
 
     plt.figure(dpi=100)
+
     plt.loglog(h_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
     plt.loglog(h_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
-    plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="Linf")
+    plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="L∞")
+
+    if show_reference:
+        # Construction de la droite O(h^p)
+        h_ref = h_sorted
+        c_ref = l2_sorted[0] / (h_ref[0] ** ordre_theorique)
+        ref_curve = c_ref * (h_ref ** ordre_theorique)
+
+        plt.loglog(
+            h_ref,
+            ref_curve,
+            color="black",
+            linestyle="-",
+            linewidth=2,
+            label=f"O(h^{ordre_theorique:.0f})"
+        )
 
     plt.xlabel("h = Δr [m]")
-    plt.ylabel("Norme de l'erreur (espace × temps)")
-    plt.title("Convergence en espace (Δt fixé petit)")
+    plt.ylabel("Norme de l'erreur")
+    plt.title("Convergence en espace")
     plt.grid(True, which="both")
     plt.legend()
     plt.tight_layout()
     plt.show()
 
 
-def plot_error_convergence_time(time_results: dict):
+def plot_error_convergence_time(
+    l1_errors_dict: dict[float, float],
+    l2_errors_dict: dict[float, float],
+    linf_errors_dict: dict[float, float],
+    show_reference: bool = True,
+    ordre_theorique: float = 1.0
+) -> None:
     """
-    Plot Log-log des erreurs (L1, L2, Linf) en fonction de dt.
+    Trace les erreurs temporelles en échelle log-log.
+
+    Les erreurs L1, L2 et L_inf sont fournies sous forme de dictionnaires
+    indexés par le pas de temps Δt.
+
+    Une droite de référence correspondant à l'ordre théorique attendu peut
+    être affichée afin de faciliter l'analyse de la convergence temporelle.
+
+    Parameters
+    ----------
+    l1_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L1 indexées par Δt.
+    l2_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L2 indexées par Δt.
+    linf_errors_dict : dict[float, float]
+        Dictionnaire des erreurs L_inf indexées par Δt.
+    show_reference : bool, optional
+        Active ou désactive l'affichage de la pente théorique.
+        Par défaut True.
+    ordre_theorique : float, optional
+        Ordre théorique utilisé pour tracer la pente de référence.
+        Par défaut 1 (schéma Euler implicite).
+
+    Returns
+    -------
+    None
+        La fonction affiche directement la figure.
     """
-    h_sorted = np.asarray(time_results["h_sorted"], dtype=float)
-    l1_sorted = np.asarray(time_results["L1_sorted"], dtype=float)
-    l2_sorted = np.asarray(time_results["L2_sorted"], dtype=float)
-    linf_sorted = np.asarray(time_results["Linf_sorted"], dtype=float)
+
+    dt_keys_l1 = set(l1_errors_dict.keys())
+    dt_keys_l2 = set(l2_errors_dict.keys())
+    dt_keys_linf = set(linf_errors_dict.keys())
+
+    if dt_keys_l1 != dt_keys_l2 or dt_keys_l1 != dt_keys_linf:
+        raise ValueError(
+            "Les dictionnaires d'erreurs doivent contenir exactement les mêmes valeurs de Δt."
+        )
+
+    dt_sorted = np.array(sorted(dt_keys_l1, reverse=True), dtype=float)
+
+    l1_sorted = np.array([l1_errors_dict[dt] for dt in dt_sorted], dtype=float)
+    l2_sorted = np.array([l2_errors_dict[dt] for dt in dt_sorted], dtype=float)
+    linf_sorted = np.array([linf_errors_dict[dt] for dt in dt_sorted], dtype=float)
 
     plt.figure(dpi=100)
-    plt.loglog(h_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
-    plt.loglog(h_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
-    plt.loglog(h_sorted, linf_sorted, "^-.", linewidth=2, label="Linf")
 
-    plt.xlabel("h = Δt [s]")
-    plt.ylabel("Norme de l'erreur (espace × temps)")
-    plt.title("Convergence en temps (Δr fixé petit)")
+    plt.loglog(dt_sorted, l1_sorted, "o-.", linewidth=2, label="L1")
+    plt.loglog(dt_sorted, l2_sorted, "s-.", linewidth=2, label="L2")
+    plt.loglog(dt_sorted, linf_sorted, "^-.", linewidth=2, label="L∞")
+
+    if show_reference:
+        dt_ref = dt_sorted
+        c_ref = l2_sorted[0] / (dt_ref[0] ** ordre_theorique)
+        ref_curve = c_ref * (dt_ref ** ordre_theorique)
+
+        plt.loglog(
+            dt_ref,
+            ref_curve,
+            color="black",
+            linestyle="-",
+            linewidth=2,
+            label=f"O(Δt^{ordre_theorique:.0f})"
+        )
+
+    plt.xlabel("Δt [s]")
+    plt.ylabel("Norme de l'erreur")
+    plt.title("Convergence en temps")
     plt.grid(True, which="both")
     plt.legend()
     plt.tight_layout()
@@ -303,43 +366,104 @@ def plot_error_convergence_time(time_results: dict):
 
 
 def plot_heatmaps_num_mms_error(
-    c_num_hist: np.ndarray,
-    r_mesh: np.ndarray,
-    time_array: np.ndarray,
-    problem: ProblemParameters,
-    mms: MMSParams):
+    param: ProblemParameters,
+    n_profile: int,
+    dt: float,
+    mms: MMSParams
+) -> None:
     """
-    Plot Heat-Maps
-    """
-    num_time_steps, num_nodes = c_num_hist.shape
+    Trace les cartes de chaleur de la solution numérique, de la solution MMS
+    exacte et de l'erreur associée.
 
-    c_mms_hist = np.zeros_like(c_num_hist, dtype=float)
-    for n_idx in range(num_time_steps):
-        t_val = float(time_array[n_idx])
-        for i_idx in range(num_nodes):
-            r_val = float(r_mesh[i_idx])
-            c_mms_hist[n_idx, i_idx] = mms_function(r_val, t_val, float(problem.r), mms)
+    La fonction résout d'abord le problème numérique avec
+    `solve_unsteady_scheme`, puis construit la solution manufacturée exacte
+    avec `mms_iteration`. Les trois champs suivants sont ensuite affichés :
+    - la solution numérique ;
+    - la solution MMS ;
+    - l'erreur définie par (numérique - MMS).
+
+    Parameters
+    ----------
+    param : ProblemParameters
+        Paramètres physiques du problème.
+    n_profile : int
+        Nombre de nœuds du maillage radial.
+    dt : float
+        Pas de temps.
+    mms : MMSParams
+        Paramètres de la solution manufacturée.
+
+    Returns
+    -------
+    None
+        La fonction affiche directement la figure.
+    """
+    r_mesh, time_array, c_num_hist = solve_unsteady_scheme(
+        param=param,
+        n_profile=n_profile,
+        dt=dt,
+        mms=mms
+    )
+
+    r_mesh_mms, time_array_mms, c_mms_hist = mms_iteration(
+        param=param,
+        n_profile=n_profile,
+        dt=dt,
+        mms=mms
+    )
+
+    if not np.allclose(r_mesh, r_mesh_mms):
+        raise ValueError(
+            "Les maillages radiaux de la solution numérique et de la MMS ne correspondent pas."
+        )
+
+    if not np.allclose(time_array, time_array_mms):
+        raise ValueError(
+            "Les vecteurs temps de la solution numérique et de la MMS ne correspondent pas."
+        )
 
     error_hist = c_num_hist - c_mms_hist
 
-    extent = (float(r_mesh[0]), float(r_mesh[-1]), float(time_array[0]), float(time_array[-1]))
+    extent = (
+        float(r_mesh[0]),
+        float(r_mesh[-1]),
+        float(time_array[0]),
+        float(time_array[-1])
+    )
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(14.0, 4.2), dpi=220)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(14.0, 4.2), dpi=100)
 
-    im_num = axes[0].imshow(c_num_hist, aspect="auto", origin="lower", extent=extent)
-    axes[0].set_title("Numérique")
+    im_num = axes[0].imshow(
+        c_num_hist,
+        aspect="auto",
+        origin="lower",
+        extent=extent
+    )
+    axes[0].set_title("Solution numérique")
     axes[0].set_xlabel("r [m]")
     axes[0].set_ylabel("t [s]")
     fig.colorbar(im_num, ax=axes[0])
 
-    im_mms = axes[1].imshow(c_mms_hist, aspect="auto", origin="lower", extent=extent)
-    axes[1].set_title("MMS")
+    im_mms = axes[1].imshow(
+        c_mms_hist,
+        aspect="auto",
+        origin="lower",
+        extent=extent
+    )
+    axes[1].set_title("Solution MMS")
     axes[1].set_xlabel("r [m]")
+    axes[1].set_ylabel("t [s]")
     fig.colorbar(im_mms, ax=axes[1])
 
-    im_err = axes[2].imshow(error_hist, aspect="auto", origin="lower", extent=extent)
+    im_err = axes[2].imshow(
+        error_hist,
+        aspect="auto",
+        origin="lower",
+        extent=extent
+    )
     axes[2].set_title("Erreur (num - MMS)")
     axes[2].set_xlabel("r [m]")
+    axes[2].set_ylabel("t [s]")
     fig.colorbar(im_err, ax=axes[2])
 
     fig.tight_layout()
