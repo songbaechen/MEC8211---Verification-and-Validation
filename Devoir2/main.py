@@ -158,7 +158,6 @@ def main():
     )
 
     """ ORIGINAL PROBLEM PLOT  """
-
     times_original = np.linspace(0, param_normal.t_final, 10)
 
     plot_original_problem_profiles(

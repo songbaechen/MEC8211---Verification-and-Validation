@@ -473,7 +473,7 @@ def plot_original_problem_profiles(
     param: ProblemParameters,
     n_profile: int,
     dt: float,
-    times_to_plot: list[float]
+    times_to_plot: np.ndarray
 ) -> None:
     """
     Trace les profils de concentration du problème original (sans MMS)
@@ -487,8 +487,8 @@ def plot_original_problem_profiles(
         Nombre de noeuds radiaux.
     dt : float
         Pas de temps utilisé pour la simulation.
-    times_to_plot : list[float]
-        Liste des temps auxquels on veut tracer les profils.
+    times_to_plot : np.ndarray
+        Array des temps auxquels on veut tracer les profils.
     """
     r_mesh, time_array, c_hist = solve_unsteady_scheme(
         param=param,
