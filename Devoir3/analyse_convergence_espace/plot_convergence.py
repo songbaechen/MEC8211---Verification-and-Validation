@@ -43,15 +43,24 @@ def richardson_convergence(
     return p_k
 
 
-def gci_factor(f_fine, f_coarse, r, p_hat, p_formal=3.0):
-    if abs((p_hat - p_formal) / p_formal) > 0.1:
-        f_s = 3.0
-        p = min(max(0.5, p_hat), p_formal)
-    else:
+def gci_factor(f_fine, f_coarse, r, p_hat, p_formal=2.0):
+    if abs((p_hat - p_formal) / p_formal) < 0.01:
+        f_s = 1
+        p = p_formal
+        GCI = f_s * abs(f_coarse - f_fine) / (r ** p - 1)
+        u_num = 0
+    elif abs((p_hat - p_formal) / p_formal) <= 0.10:
         f_s = 1.25
         p = p_formal
-    return f_s * abs(f_coarse - f_fine) / (r ** p - 1)
+        GCI = f_s * abs(f_coarse - f_fine) / (r ** p - 1)
+        u_num = GCI
+    else:
+        f_s = 3.0
+        p = min(max(0.5, p_hat), p_formal)
+        GCI = f_s * abs(f_coarse - f_fine) / (r ** p - 1)
+        u_num = GCI
 
+    return GCI, u_num
 
 def plot_convergence_and_gci(k_list, dx_list, p_formal=2.0):
     """
@@ -73,13 +82,17 @@ def plot_convergence_and_gci(k_list, dx_list, p_formal=2.0):
 
     # --- GCI ---
     gci_list = [0.0]
+    u_num_list = []
     for i in range(1, len(dx_list)):
         r_i = dx_list[i - 1] / dx_list[i]
-        gci_i = gci_factor(k_list[i], k_list[i - 1], r_i, p_hat, p_formal)
-        gci_list.append(gci_i)
+        # gci_i = gci_factor(k_list[i], k_list[i - 1], r_i, p_hat, p_formal)
+        gci_i = gci_factor(k_list[i], k_list[i - 1], r_i, p_hat, 2.0)
+        gci_list.append(gci_i[0])
+        u_num_list.append(gci_i[1])
     gci_arr = np.array(gci_list)
 
-    u_num = gci_list[-1]
+    # u_num = gci_list[-1]
+    u_num = u_num_list[-1]
 
     # --- Print résumé ---
     print(f"p_hat = {p_hat:.4f},  k_exact = {k_exact:.6f} µm²,  u_num = {u_num:.6f} µm²")
@@ -164,4 +177,4 @@ if __name__ == "__main__":
     dx_list = [2e-5, 1e-5, 2e-5/3]
     k_list  = [29.928743, 26.798465, 28.165698]
 
-    plot_convergence_and_gci(k_list, dx_list, p_formal=3.0)
+    plot_convergence_and_gci(k_list, dx_list, p_formal=2.0)

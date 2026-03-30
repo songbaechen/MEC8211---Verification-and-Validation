@@ -10,65 +10,65 @@ from problem_definition.problem_definition import SampleParameters, ProblemParam
 from plot_convergence import plot_convergence_and_gci
 
 
-def richardson_convergence(
-        srq_list: list[float],
-        dx_list: list[float],
-        p_est: float = 3.0,
-        max_n_iter: int = 100,
-        tol: float = 5e-3
-    ) -> float:
-    """
-    1: finest mesh
-    2: normal/median mesh
-    3: gross mesh
-    """
-    r12 = dx_list[-1] / dx_list[-2]
-    r23 = dx_list[-2] / dx_list[-3]
-
-    f1 = srq_list[-1]
-    f2 = srq_list[-2]
-    f3 = srq_list[-3]
-
-    # initial estimation of p
-    p_k = p_est
-
-    for i in range(max_n_iter):
-        up_term = (r12 ** p_k - 1) * (f3 - f2) / (f2 - f1) + r12 ** p_k
-        p_kp1 = np.log(up_term) / np.log(r12 * r23)
-
-        if abs(p_kp1 - p_k) < tol:
-            return p_kp1
-
-        p_k = p_kp1
-
-    raise ValueError("Richardson iterative method did not converge (inside fct 'richardson_convergence')'")
-
-
-def gci_factor(
-        srq_list: list[float],
-        fx_list: list[float],
-        p_hat: float,
-        p_formal: float = 3.0
-    ) -> float:
-    """
-    1: finest mesh
-    2: gross mesh
-    """
-    f1 = srq_list[-1]
-    f2 = srq_list[-2]
-    r = fx_list[-1] / fx_list[-2]
-
-    p_ratio = abs( (p_hat - p_formal) / p_formal )
-
-    if p_ratio > 0.1:
-        f_s = 3.0
-        p = min( max(0.5, p_hat), p_formal )
-
-    else:
-        f_s = 1.25
-        p = p_formal
-
-    return f_s * abs(f2 - f1) / (r ** p - 1)
+# def richardson_convergence(
+#         srq_list: list[float],
+#         dx_list: list[float],
+#         p_est: float = 3.0,
+#         max_n_iter: int = 100,
+#         tol: float = 5e-3
+#     ) -> float:
+#     """
+#     1: finest mesh
+#     2: normal/median mesh
+#     3: gross mesh
+#     """
+#     r12 = dx_list[-1] / dx_list[-2]
+#     r23 = dx_list[-2] / dx_list[-3]
+#
+#     f1 = srq_list[-1]
+#     f2 = srq_list[-2]
+#     f3 = srq_list[-3]
+#
+#     # initial estimation of p
+#     p_k = p_est
+#
+#     for i in range(max_n_iter):
+#         up_term = (r12 ** p_k - 1) * (f3 - f2) / (f2 - f1) + r12 ** p_k
+#         p_kp1 = np.log(up_term) / np.log(r12 * r23)
+#
+#         if abs(p_kp1 - p_k) < tol:
+#             return p_kp1
+#
+#         p_k = p_kp1
+#
+#     raise ValueError("Richardson iterative method did not converge (inside fct 'richardson_convergence')'")
+#
+#
+# def gci_factor(
+#         srq_list: list[float],
+#         fx_list: list[float],
+#         p_hat: float,
+#         p_formal: float = 3.0
+#     ) -> float:
+#     """
+#     1: finest mesh
+#     2: gross mesh
+#     """
+#     f1 = srq_list[-1]
+#     f2 = srq_list[-2]
+#     r = fx_list[-1] / fx_list[-2]
+#
+#     p_ratio = abs( (p_hat - p_formal) / p_formal )
+#
+#     if p_ratio > 0.1:
+#         f_s = 3.0
+#         p = min( max(0.5, p_hat), p_formal )
+#
+#     else:
+#         f_s = 1.25
+#         p = p_formal
+#
+#     return f_s * abs(f2 - f1) / (r ** p - 1)
 
 
 def convergence_analysis(
@@ -141,5 +141,5 @@ if __name__ == "__main__":
         problem_parameters=problem_parameters
     )
 
-    plot_convergence_and_gci(k_list, dx_list, p_formal=3.0)
+    plot_convergence_and_gci(k_list, dx_list, p_formal=2.0)
 
