@@ -1,0 +1,5 @@
+numpy
+pillow      # this is the modern version (python > 3.0 supported version of PIL)
+matplotlib
+numba
+scipy
