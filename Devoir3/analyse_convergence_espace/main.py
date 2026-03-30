@@ -33,7 +33,6 @@ CELL_SIZES = [4e-6, (200 / 75) * 1e-6, 2e-6, (200 / 150) * 1e-6, 1e-6]
 FIXED_SEED = 42
 
 THEORETICAL_ORDER = 2
-REFINEMENT_RATIO = 2.0
 
 
 # ==============================================================================
@@ -95,12 +94,14 @@ def estimate_observed_order(dx_values, relative_errors):
     return slope, intercept, r_value
 
 
-def estimate_numerical_uncertainty(k_values, p_estimated, p_theoretical, ratio):
+def estimate_numerical_uncertainty(k_values, dx_values, p_estimated, p_theoretical):
     """
     Détermine k_num et u_num selon les critères du cours.
+    Le ratio de raffinement est calculé à partir des dx réels.
     """
     fine_value = k_values[-1]
     medium_value = k_values[-2]
+    ratio = dx_values[-2] / dx_values[-1]
 
     discrepancy_ratio = abs((p_estimated - p_theoretical) / p_theoretical)
 
@@ -159,28 +160,24 @@ def plot_convergence_results(dx_values, k_values, coarse_dx, coarse_errors, fit_
     axes[0].legend()
 
     # ------------------------------------------------------------------
-    # Graphique 2 : k en fonction de Δx
+    # Graphique 2 : k en fonction de Δx avec barres d'erreur ±u_num
     # ------------------------------------------------------------------
-    axes[1].plot(
+    axes[1].errorbar(
         dx_values * 1e6,
         k_values,
-        marker="s",
-        linewidth=1.8,
+        yerr=2 * u_num,
+        fmt="s-",
         markersize=6,
-        label="Perméabilité calculée"
+        linewidth=1.8,
+        capsize=6,
+        capthick=1.5,
+        label=f"k ± GCI (±{2 * u_num:.4f} µm²)"
     )
     axes[1].axhline(
         k_values[-1],
         linestyle="--",
         linewidth=1.5,
         label=f"Maillage fin : {k_values[-1]:.2f} µm²"
-    )
-    axes[1].fill_between(
-        dx_values * 1e6,
-        k_values[-1] - u_num,
-        k_values[-1] + u_num,
-        alpha=0.18,
-        label=f"Bande ±u_num = ±{u_num:.4f} µm²"
     )
     axes[1].invert_xaxis()
     axes[1].set_xlabel("Taille de maille Δx (µm)")
@@ -274,9 +271,9 @@ if __name__ == "__main__":
 
     k_num, u_num, relative_order_gap, selected_method = estimate_numerical_uncertainty(
         permeability_by_mesh,
+        full_spacings,
         apparent_order,
-        THEORETICAL_ORDER,
-        REFINEMENT_RATIO
+        THEORETICAL_ORDER
     )
 
     plot_convergence_results(
@@ -289,7 +286,7 @@ if __name__ == "__main__":
         u_num
     )
 
-    plot_geometry_refinement(FIXED_SEED)
+    # plot_geometry_refinement(FIXED_SEED)
 
     print_summary(
         GRID_SIZES,
