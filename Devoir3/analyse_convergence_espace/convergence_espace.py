@@ -85,8 +85,8 @@ def convergence_analysis(
     k_list = []
     dx_list = []
     for i in range(n_steps):
-        dx = initial_dx / (i + 1)
-        nx = initial_nx * (i + 1)
+        dx = initial_dx / ratio**(i + 1)
+        nx = initial_nx * ratio**(i + 1)
 
         d_equivalent = Generate_sample(
             seed=sample_parameters.seed,
