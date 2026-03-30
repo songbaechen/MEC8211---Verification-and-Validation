@@ -13,7 +13,7 @@ sys.path.append(str(ROOT_DIR))
 from analyse_monte_carlo.monte_carlo import monte_carlo_analysis, MonteCarloInputs
 from analyse_monte_carlo.simulation_erreor import compute_simulation_error
 from analyse_monte_carlo.incertitude_experimentale import compute_experimental_uncertainty
-from richardson import run_numerical_uncertainty_analysis
+from analyse_convergence_espace.richardson import run_numerical_uncertainty_analysis
 
 
 
