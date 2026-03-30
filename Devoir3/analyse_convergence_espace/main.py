@@ -4,10 +4,17 @@ Question E — Estimation de l'erreur du modèle
 
 import numpy as np
 
-from monte_carlo import monte_carlo_analysis, MonteCarloInputs
-from simulation_error import compute_simulation_error
-from experimental_uncertainty import compute_experimental_uncertainty
-from numerical_uncertainty import run_numerical_uncertainty_analysis
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR))
+
+from analyse_monte_carlo.monte_carlo import monte_carlo_analysis, MonteCarloInputs
+from analyse_monte_carlo.simulation_erreor import compute_simulation_error
+from analyse_monte_carlo.incertitude_experimentale import compute_experimental_uncertainty
+from richardson import run_numerical_uncertainty_analysis
+
 
 
 def compute_validation_uncertainty(u_num, u_input_minus, u_input_plus, u_d):

@@ -251,16 +251,24 @@ def print_summary(mesh_sizes, dx_values, k_values, p_estimated, discrepancy_rati
     print(f"u_num                         : {u_num:.4f} µm²")
     print("=" * 60 + "\n")
 
-
-# ==============================================================================
-# SCRIPT PRINCIPAL
-# ==============================================================================
-
-if __name__ == "__main__":
-    permeability_by_mesh = compute_mesh_convergence(GRID_SIZES, CELL_SIZES, FIXED_SEED)
+def run_numerical_uncertainty_analysis():
+    """
+    Lance toute l'étude de convergence et retourne les résultats utiles
+    pour les autres questions.
+    """
+    permeability_by_mesh = compute_mesh_convergence(
+        GRID_SIZES,
+        CELL_SIZES,
+        FIXED_SEED
+    )
 
     finest_mesh_value = permeability_by_mesh[-1]
-    relative_error_vs_finest = np.abs(finest_mesh_value - permeability_by_mesh[:-1]) / finest_mesh_value
+
+    relative_error_vs_finest = (
+        np.abs(finest_mesh_value - permeability_by_mesh[:-1])
+        / finest_mesh_value
+    )
+
     coarse_spacings = np.asarray(CELL_SIZES[:-1], dtype=float)
     full_spacings = np.asarray(CELL_SIZES, dtype=float)
 
@@ -276,25 +284,52 @@ if __name__ == "__main__":
         THEORETICAL_ORDER
     )
 
+    return {
+        "k_num": k_num,
+        "u_num": u_num,
+        "p_obs": apparent_order,
+        "mesh_k": permeability_by_mesh,
+        "dx_values": full_spacings,
+        "method": selected_method
+    }
+
+# ==============================================================================
+# SCRIPT PRINCIPAL
+# ==============================================================================
+
+if __name__ == "__main__":
+    results = run_numerical_uncertainty_analysis()
+
+    k_num = results["k_num"]
+    u_num = results["u_num"]
+    permeability_by_mesh = results["mesh_k"]
+    full_spacings = results["dx_values"]
+    apparent_order = results["p_obs"]
+
+    finest_mesh_value = permeability_by_mesh[-1]
+    relative_error_vs_finest = (
+        np.abs(finest_mesh_value - permeability_by_mesh[:-1])
+        / finest_mesh_value
+    )
+    coarse_spacings = full_spacings[:-1]
+
     plot_convergence_results(
         full_spacings,
         permeability_by_mesh,
         coarse_spacings,
         relative_error_vs_finest,
         apparent_order,
-        log_fit_intercept,
+        np.log(relative_error_vs_finest[-1]) - apparent_order * np.log(coarse_spacings[-1]),
         u_num
     )
-
-    # plot_geometry_refinement(FIXED_SEED)
 
     print_summary(
         GRID_SIZES,
         full_spacings,
         permeability_by_mesh,
         apparent_order,
-        relative_order_gap,
+        abs((apparent_order - THEORETICAL_ORDER) / THEORETICAL_ORDER),
         k_num,
         u_num,
-        selected_method
+        results["method"]
     )

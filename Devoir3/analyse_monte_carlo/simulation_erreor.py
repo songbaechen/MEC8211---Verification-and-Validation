@@ -2,7 +2,7 @@
 Question D — Erreur de simulation E = S - D
 """
 
-from monte_carlo import monte_carlo_analysis, MonteCarloInputs
+from .monte_carlo import monte_carlo_analysis, MonteCarloInputs
 
 
 def compute_simulation_error(mc_results, experimental_median=80.6):
