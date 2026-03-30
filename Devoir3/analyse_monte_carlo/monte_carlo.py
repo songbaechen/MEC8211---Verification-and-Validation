@@ -27,7 +27,7 @@ class MonteCarloInputs:
     dx: float = 2e-6
     delta_p: float = 0.1
     filename: str = "fiber_mat_MC.tiff"
-    rng_seed: int = 8211
+    rng_seed: int = 42
     sample_seed: int = 0
 
 
