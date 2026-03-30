@@ -7,12 +7,13 @@ import numpy as np
 
 from problem_definition.lbm_devoir3 import Generate_sample, LBM
 from problem_definition.problem_definition import SampleParameters, ProblemParameters
+from plot_convergence import plot_convergence_and_gci
 
 
 def richardson_convergence(
         srq_list: list[float],
         dx_list: list[float],
-        p_est: float = 2.0,
+        p_est: float = 3.0,
         max_n_iter: int = 100,
         tol: float = 5e-3
     ) -> float:
@@ -47,7 +48,7 @@ def gci_factor(
         srq_list: list[float],
         fx_list: list[float],
         p_hat: float,
-        p_formal: float = 2.0
+        p_formal: float = 3.0
     ) -> float:
     """
     1: finest mesh
@@ -77,10 +78,12 @@ def convergence_analysis(
         n_steps: int,
         sample_parameters: SampleParameters,
         problem_parameters: ProblemParameters
-    ):
+    ) -> tuple(list[float], list[float]):
     """
     Keeping nx * dx constant by using a ratio
     """
+    k_list = []
+    dx_list = []
     for i in range(n_steps):
         dx = initial_dx / (i + 1)
         nx = initial_nx * (i + 1)
@@ -102,12 +105,16 @@ def convergence_analysis(
             d_equivalent=d_equivalent
         )
 
+        k_list.append(k)
+        dx_list.append(dx)
+
+    return k_list, dx_list
 
 
 if __name__ == "__main__":
     filename = "convergence_space.tiff"
     nx = 100
-    dx = 2e-6
+    dx = 2e-5
 
     sample_parameters = SampleParameters(
         seed=0,
@@ -125,13 +132,14 @@ if __name__ == "__main__":
         dx=dx,
         d_equivalent=0.0        # temporary will be changed inside function
     )
-    convergence_analysis(
-        initial_dx=2e-6,
-        initial_nx=100,
+    k_list, dx_list = convergence_analysis(
+        initial_dx=dx,
+        initial_nx=nx,
         ratio=2,
         n_steps=3,
         sample_parameters=sample_parameters,
         problem_parameters=problem_parameters
     )
 
+    plot_convergence_and_gci(k_list, dx_list, p_formal=3.0)
 
