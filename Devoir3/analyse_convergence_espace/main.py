@@ -1,6 +1,6 @@
 """
-Question A — Détermination de l'erreur numérique de la perméabilité calculée par LBM
-                en fonction du maillage.
+Question A — Estimation de l'incertitude numérique u_num sur la perméabilité
+par étude de convergence en maillage
 """
 
 import sys
@@ -13,168 +13,291 @@ from scipy.stats import linregress
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR))
+
 from problem_definition.lbm_devoir3 import Generate_sample, LBM
 
 
 # ==============================================================================
-# PARAMÈTRES
+# PARAMÈTRES DU PROBLÈME
 # ==============================================================================
 
-DELTA_P      = 0.1
-PORO         = 0.9
-MEAN_FIBER_D = 12.5
-ECART_TYPE_D = 2.85
+PRESSURE_DROP = 0.1
+TARGET_POROSITY = 0.9
+FIBER_DIAMETER_MEAN = 12.5
+FIBER_DIAMETER_STD = 2.85
 
-NX_LIST = [50, 75, 100, 150, 200]
-DX_LIST = [4e-6, 200 / 75 * 1e-6, 2e-6, 200 / 150 * 1e-6, 1e-6]
+# Domaine physique conservé constant : NX * dx = 200 µm
+GRID_SIZES = [50, 75, 100, 150, 200]
+CELL_SIZES = [4e-6, (200 / 75) * 1e-6, 2e-6, (200 / 150) * 1e-6, 1e-6]
 
-SEEDS = [101, 102, 103, 104, 105, 106, 107]
+FIXED_SEED = 42
 
-PF = 2   # ordre de convergence théorique LBM
-R  = 2   # facteur de raffinement entre les deux maillages les plus fins
-
-SEED_VISU = 101
-NX_VISU   = [50, 100, 200]
-DX_VISU   = [4e-6, 2e-6, 1e-6]
+THEORETICAL_ORDER = 2
+REFINEMENT_RATIO = 2.0
 
 
 # ==============================================================================
-# FONCTIONS
+# FONCTIONS UTILITAIRES
 # ==============================================================================
 
-def run_convergence_study():
-    """Exécute les simulations LBM sur tous les maillages × seeds."""
-    k_means, k_stds = [], []
-    for nx, dx in zip(NX_LIST, DX_LIST):
-        k_seeds = []
-        for seed in SEEDS:
-            filename = f"fiber_mat_NX{nx}_seed{seed}.tiff"
-            d_eq = Generate_sample(seed, filename, MEAN_FIBER_D, ECART_TYPE_D, PORO, nx, dx, plotting=False)
-            k = LBM(filename, nx, DELTA_P, dx, d_eq, plotting=False)
-            k_seeds.append(k)
-        k_means.append(np.mean(k_seeds))
-        k_stds.append(np.std(k_seeds, ddof=1))
-    return np.array(k_means), np.array(k_stds), np.array(DX_LIST)
+def run_mesh_case(nx: int, dx: float, seed: int) -> float:
+    """
+    Génère une géométrie fibreuse et calcule la perméabilité LBM
+    pour un niveau de maillage donné.
+    """
+    image_name = f"fiber_mesh_NX{nx}_seed{seed}.tiff"
 
-
-def compute_apparent_order(k_means, dx_array):
-    """Régression log-log de l'erreur relative → ordre apparent p."""
-    k_fin     = k_means[-1]
-    err_rel   = np.abs(k_fin - k_means[:-1]) / k_fin
-    dx_coarse = dx_array[:-1]
-
-    slope, intercept, r_value, _, _ = linregress(np.log(dx_coarse), np.log(err_rel))
-    return slope, intercept, r_value, err_rel, dx_coarse
-
-
-def compute_numerical_uncertainty(k_means, p_apparent):
-    """Calcul de k_num et u_num selon le rapport |p - pf| / pf."""
-    rapport = abs((p_apparent - PF) / PF)
-
-    if rapport < 0.01:
-        k_num = k_means[-1] + (k_means[-1] - k_means[-2]) / (R**PF - 1)
-        u_num = 0.0
-        print(f"  Branche <1% : extrapolation de Richardson")
-        print(f"  k_num = k_extrap = {k_num:.4f} µm²  (pas d'incertitude)")
-    elif rapport <= 0.10:
-        GCI   = (1.25 / (R**PF - 1)) * abs(k_means[-2] - k_means[-1])
-        u_num = GCI / 2
-        k_num = k_means[-1]
-        print(f"  Branche ≤10% : GCI (Fs=1.25, p=pf={PF})")
-        print(f"  k_num = {k_num:.4f} µm²,  u_num = {u_num:.4f} µm²")
-    else:
-        p_exp = min(max(0.5, p_apparent), PF)
-        GCI   = (3 / (R**p_exp - 1)) * abs(k_means[-2] - k_means[-1])
-        u_num = GCI / 2
-        k_num = k_means[-1]
-        print(f"  Branche >10% : GCI (Fs=3, p_exp={p_exp:.2f})")
-        print(f"  k_num = {k_num:.4f} µm²,  u_num = {u_num:.4f} µm²")
-
-    return k_num, u_num, rapport
-
-
-def plot_convergence(ax, dx_coarse, err_rel, intercept, p_apparent):
-    """Erreur relative log-log + droite de régression."""
-    dx_fit  = np.linspace(dx_coarse.min() * 0.8, dx_coarse.max() * 1.2, 100)
-    err_fit = np.exp(intercept) * dx_fit**p_apparent
-
-    ax.loglog(dx_coarse * 1e6, err_rel * 100, "bo", ms=8, lw=2, label="Erreur relative")
-    ax.loglog(dx_fit * 1e6, err_fit * 100, "r--", lw=2,
-              label=f"Régression : pente = {p_apparent:.2f}")
-    ax.set(xlabel="dx (µm)", ylabel="Erreur relative (%)",
-           title="Convergence en maillage (log-log)")
-    ax.legend(fontsize=9)
-    ax.grid(True, which="both", alpha=0.3)
-
-
-def plot_permeability(ax, dx_array, k_means, k_stds, u_num):
-    """k moyen ± écart-type en fonction de dx."""
-    k_fin = k_means[-1]
-    ax.errorbar(dx_array, k_means, yerr=k_stds, fmt="bo-", ms=8, lw=2, capsize=5,
-                label="k moyen ± écart-type (seeds)")
-    ax.axhline(k_fin, color="r", ls="--", lw=1.5, label=f"k_fin = {k_fin:.2f} µm²")
-    ax.fill_between(dx_array, k_fin - u_num, k_fin + u_num, color="red", alpha=0.15,
-                    label=f"±u_num = ±{u_num:.4f} µm²")
-    ax.set(xlabel="dx (m)", ylabel="k (µm²)",
-           title="Perméabilité moyenne par niveau de maillage")
-    ax.legend(fontsize=9)
-    ax.grid(True, alpha=0.3)
-
-
-def plot_mesh_refinement():
-    """Visualisation du raffinement géométrique (seed fixe)."""
-    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
-    fig.suptitle(
-        f"Raffinement de maillage — seed fixe = {SEED_VISU}\n"
-        f"(NX×dx = 200 µm constant → même géométrie physique)", fontsize=13,
+    equivalent_diameter = Generate_sample(
+        seed,
+        image_name,
+        FIBER_DIAMETER_MEAN,
+        FIBER_DIAMETER_STD,
+        TARGET_POROSITY,
+        nx,
+        dx,
+        plotting=False
     )
-    for j, (nx, dx) in enumerate(zip(NX_VISU, DX_VISU)):
-        filename = f"fiber_mat_visu_NX{nx}.tiff"
-        Generate_sample(SEED_VISU, filename, MEAN_FIBER_D, ECART_TYPE_D, PORO, nx, dx, plot=False)
-        img = np.array(Image.open(filename))
-        axes[j].imshow(img, cmap="gray", origin="lower")
-        axes[j].set_title(f"NX={nx}, dx={dx * 1e6:.1f} µm", fontsize=12)
-        axes[j].axis("off")
-    plt.tight_layout()
-    plt.savefig("raffinement_geometrie.png", dpi=150, bbox_inches="tight")
-    plt.show()
-    print("Graphique sauvegardé : raffinement_geometrie.png")
+
+    permeability = LBM(
+        image_name,
+        nx,
+        PRESSURE_DROP,
+        dx,
+        equivalent_diameter,
+        plotting=False
+    )
+
+    return permeability
 
 
-def print_summary(k_means, k_stds, p_apparent, rapport, k_num, u_num):
-    """Affiche le résumé final."""
-    print("\n--- RÉSUMÉ ---")
-    for i, nx in enumerate(NX_LIST):
-        print(f"  NX={nx:3d} : k_moy = {k_means[i]:.4f} ± {k_stds[i]:.4f} µm²")
-    print(f"  Ordre apparent p    = {p_apparent:.4f}")
-    print(f"  |p - pf|/pf         = {rapport * 100:.2f} %")
-    print(f"  k_num               = {k_num:.4f} µm²")
-    print(f"  u_num               = {u_num:.4f} µm²")
+def compute_mesh_convergence(mesh_sizes, spacings, seed):
+    """
+    Calcule la perméabilité pour tous les niveaux de maillage.
+    """
+    permeability_values = []
+
+    for nx, dx in zip(mesh_sizes, spacings):
+        k_value = run_mesh_case(nx, dx, seed)
+        permeability_values.append(k_value)
+
+    return np.asarray(permeability_values, dtype=float)
 
 
-# ==============================================================================
-# EXÉCUTION
-# ==============================================================================
+def estimate_observed_order(dx_values, relative_errors):
+    """
+    Régression log-log pour obtenir l'ordre apparent de convergence.
+    """
+    log_dx = np.log(dx_values)
+    log_err = np.log(relative_errors)
 
-if __name__ == "__main__":
+    slope, intercept, r_value, _, _ = linregress(log_dx, log_err)
 
-    # 1. Simulations
-    k_means, k_stds, dx_array = run_convergence_study()
+    return slope, intercept, r_value
 
-    # 2. Analyse
-    p_apparent, intercept, _, err_rel, dx_coarse = compute_apparent_order(k_means, dx_array)
-    k_num, u_num, rapport = compute_numerical_uncertainty(k_means, p_apparent)
 
-    # 3. Graphiques
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
-    plot_convergence(ax1, dx_coarse, err_rel, intercept, p_apparent)
-    plot_permeability(ax2, dx_array, k_means, k_stds, u_num)
+def estimate_numerical_uncertainty(k_values, p_estimated, p_theoretical, ratio):
+    """
+    Détermine k_num et u_num selon les critères du cours.
+    """
+    fine_value = k_values[-1]
+    medium_value = k_values[-2]
+
+    discrepancy_ratio = abs((p_estimated - p_theoretical) / p_theoretical)
+
+    if discrepancy_ratio < 0.01:
+        k_num = fine_value + (fine_value - medium_value) / (ratio**p_theoretical - 1.0)
+        u_num = 0.0
+        method_label = "Extrapolation de Richardson"
+
+    elif discrepancy_ratio <= 0.10:
+        gci = (1.25 / (ratio**p_theoretical - 1.0)) * abs(medium_value - fine_value)
+        u_num = gci / 2.0
+        k_num = fine_value
+        method_label = "GCI avec Fs = 1.25"
+
+    else:
+        p_bounded = min(max(0.5, p_estimated), p_theoretical)
+        gci = (3.0 / (ratio**p_bounded - 1.0)) * abs(medium_value - fine_value)
+        u_num = gci / 2.0
+        k_num = fine_value
+        method_label = f"GCI avec Fs = 3 et p_exp = {p_bounded:.2f}"
+
+    return k_num, u_num, discrepancy_ratio, method_label
+
+
+def plot_convergence_results(dx_values, k_values, coarse_dx, coarse_errors, fit_slope, fit_intercept, u_num):
+    """
+    Produit deux graphiques de convergence.
+    """
+    fig, axes = plt.subplots(2, 1, figsize=(8, 10))
+
+    # ------------------------------------------------------------------
+    # Graphique 1 : erreur relative log-log
+    # ------------------------------------------------------------------
+    fitted_dx = np.linspace(coarse_dx.min() * 0.85, coarse_dx.max() * 1.15, 200)
+    fitted_error = np.exp(fit_intercept) * fitted_dx**fit_slope
+
+    axes[0].loglog(
+        coarse_dx * 1e6,
+        coarse_errors * 100,
+        marker="o",
+        linewidth=1.8,
+        markersize=6,
+        label="Erreur relative"
+    )
+    axes[0].loglog(
+        fitted_dx * 1e6,
+        fitted_error * 100,
+        linestyle="--",
+        linewidth=2.0,
+        label=f"Régression log-log (p = {fit_slope:.2f})"
+    )
+    axes[0].set_xlabel("Taille de maille Δx (µm)")
+    axes[0].set_ylabel("Erreur relative (%)")
+    axes[0].set_title("Erreur relative par rapport au maillage le plus fin")
+    axes[0].grid(True, which="both", alpha=0.3)
+    axes[0].legend()
+
+    # ------------------------------------------------------------------
+    # Graphique 2 : k en fonction de Δx
+    # ------------------------------------------------------------------
+    axes[1].plot(
+        dx_values * 1e6,
+        k_values,
+        marker="s",
+        linewidth=1.8,
+        markersize=6,
+        label="Perméabilité calculée"
+    )
+    axes[1].axhline(
+        k_values[-1],
+        linestyle="--",
+        linewidth=1.5,
+        label=f"Maillage fin : {k_values[-1]:.2f} µm²"
+    )
+    axes[1].fill_between(
+        dx_values * 1e6,
+        k_values[-1] - u_num,
+        k_values[-1] + u_num,
+        alpha=0.18,
+        label=f"Bande ±u_num = ±{u_num:.4f} µm²"
+    )
+    axes[1].invert_xaxis()
+    axes[1].set_xlabel("Taille de maille Δx (µm)")
+    axes[1].set_ylabel("Perméabilité k (µm²)")
+    axes[1].set_title("Évolution de la perméabilité avec le raffinement")
+    axes[1].grid(True, alpha=0.3)
+    axes[1].legend()
+
     plt.tight_layout()
     plt.savefig("convergence_maillage.png", dpi=150, bbox_inches="tight")
     plt.show()
+
     print("Graphique sauvegardé : convergence_maillage.png")
 
-    plot_mesh_refinement()
 
-    # 4. Résumé
-    print_summary(k_means, k_stds, p_apparent, rapport, k_num, u_num)
+def plot_geometry_refinement(seed):
+    """
+    Visualisation de la même géométrie physique pour différents maillages.
+    """
+    selected_nx = [50, 100, 200]
+    selected_dx = [4e-6, 2e-6, 1e-6]
+
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4.5))
+    fig.suptitle(
+        f"Raffinement géométrique à seed fixé = {seed}\n"
+        f"(NX × Δx constant = 200 µm)",
+        fontsize=13
+    )
+
+    for ax, nx, dx in zip(axes, selected_nx, selected_dx):
+        img_name = f"geometry_seed{seed}_NX{nx}.tiff"
+        Generate_sample(
+            seed,
+            img_name,
+            FIBER_DIAMETER_MEAN,
+            FIBER_DIAMETER_STD,
+            TARGET_POROSITY,
+            nx,
+            dx,
+            plotting=False
+        )
+
+        image_data = np.array(Image.open(img_name))
+        ax.imshow(image_data, cmap="gray", origin="lower")
+        ax.set_title(f"NX = {nx}, Δx = {dx * 1e6:.2f} µm", fontsize=11)
+        ax.axis("off")
+
+    plt.tight_layout()
+    plt.savefig("raffinement_geometrie.png", dpi=150, bbox_inches="tight")
+    plt.show()
+
+    print("Graphique sauvegardé : raffinement_geometrie.png")
+
+
+def print_summary(mesh_sizes, dx_values, k_values, p_estimated, discrepancy_ratio, k_num, u_num, method_label):
+    """
+    Affiche le résumé final.
+    """
+    print("\n" + "=" * 60)
+    print("Résumé de l'étude de convergence en maillage")
+    print("=" * 60)
+
+    for nx, dx, k_val in zip(mesh_sizes, dx_values, k_values):
+        print(f"NX = {nx:3d} | Δx = {dx * 1e6:6.3f} µm | k = {k_val:8.4f} µm²")
+
+    print("-" * 60)
+    print(f"Ordre apparent p               : {p_estimated:.4f}")
+    print(f"|p - p_th| / p_th             : {100 * discrepancy_ratio:.2f} %")
+    print(f"Méthode retenue               : {method_label}")
+    print(f"k_num                         : {k_num:.4f} µm²")
+    print(f"u_num                         : {u_num:.4f} µm²")
+    print("=" * 60 + "\n")
+
+
+# ==============================================================================
+# SCRIPT PRINCIPAL
+# ==============================================================================
+
+if __name__ == "__main__":
+    permeability_by_mesh = compute_mesh_convergence(GRID_SIZES, CELL_SIZES, FIXED_SEED)
+
+    finest_mesh_value = permeability_by_mesh[-1]
+    relative_error_vs_finest = np.abs(finest_mesh_value - permeability_by_mesh[:-1]) / finest_mesh_value
+    coarse_spacings = np.asarray(CELL_SIZES[:-1], dtype=float)
+    full_spacings = np.asarray(CELL_SIZES, dtype=float)
+
+    apparent_order, log_fit_intercept, r_fit = estimate_observed_order(
+        coarse_spacings,
+        relative_error_vs_finest
+    )
+
+    k_num, u_num, relative_order_gap, selected_method = estimate_numerical_uncertainty(
+        permeability_by_mesh,
+        apparent_order,
+        THEORETICAL_ORDER,
+        REFINEMENT_RATIO
+    )
+
+    plot_convergence_results(
+        full_spacings,
+        permeability_by_mesh,
+        coarse_spacings,
+        relative_error_vs_finest,
+        apparent_order,
+        log_fit_intercept,
+        u_num
+    )
+
+    plot_geometry_refinement(FIXED_SEED)
+
+    print_summary(
+        GRID_SIZES,
+        full_spacings,
+        permeability_by_mesh,
+        apparent_order,
+        relative_order_gap,
+        k_num,
+        u_num,
+        selected_method
+    )
