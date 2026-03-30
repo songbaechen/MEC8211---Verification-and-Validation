@@ -18,7 +18,7 @@ from problem_definition.problem_definition import SampleParameters, ProblemParam
 
 @dataclass
 class MonteCarloInputs:
-    n_runs: int = 20
+    n_runs: int = 200
     porosity_mean: float = 0.900
     porosity_std: float = 7.50e-3
     mean_fiber_diameter: float = 12.5
@@ -27,7 +27,7 @@ class MonteCarloInputs:
     dx: float = 2e-6
     delta_p: float = 0.1
     filename: str = "fiber_mat_MC.tiff"
-    rng_seed: int = 42
+    rng_seed: int = 8211
     sample_seed: int = 0
 
 
