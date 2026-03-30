@@ -21,7 +21,7 @@ from numba import njit, prange
 # FONCTION : Generate_sample
 # ==============================================================================
 
-def Generate_sample(seed, filename, mean_d, std_d, poro, nx, dx):
+def Generate_sample(seed, filename, mean_d, std_d, poro, nx, dx, plotting = False):
     """
     Crée une structure 2D de fibres et l'exporte en format TIFF.
 
@@ -99,7 +99,8 @@ def Generate_sample(seed, filename, mean_d, std_d, poro, nx, dx):
         circles[fiber_count] = [xi, yi, di]
         fiber_count += 1
 
-    print(f"number_of_fibres = {fiber_count}")
+    if plotting:
+        print(f"number_of_fibres = {fiber_count}")
 
     # -------------------------------------------------------------------------
     # Remplissage de la grille — vectorisé NumPy (pas de boucle Python i,j)
@@ -125,13 +126,14 @@ def Generate_sample(seed, filename, mean_d, std_d, poro, nx, dx):
     poremat_img = poremat.T   # (NY, NX) : lignes=y, colonnes=x
     Image.fromarray(poremat_img.astype(np.uint8) * 255).save(filename)
 
-    plt.figure(1)
-    plt.imshow(np.rot90(poremat_img, k=1), cmap='gray')
-    plt.title("Structure de fibres générée")
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show(block=False)
-    plt.pause(0.5)
+    if plotting: 
+        plt.figure(1)
+        plt.imshow(np.rot90(poremat_img, k=1), cmap='gray')
+        plt.title("Structure de fibres générée")
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show(block=False)
+        plt.pause(0.5)
 
     return d_equivalent
 
@@ -230,7 +232,7 @@ def _lbm_step(N, SOLID, W, cx, cy, NX, NY, deltaP, dx, rho0, dt, OMEGA, bb_idx):
 # FONCTION : LBM
 # ==============================================================================
 
-def LBM(filename, NX, deltaP, dx, d_equivalent):
+def LBM(filename, NX, deltaP, dx, d_equivalent, plotting = False):
     """
     Calcule l'écoulement à travers le mat de fibres par la méthode LBM (D2Q9).
 
@@ -265,8 +267,10 @@ def LBM(filename, NX, deltaP, dx, d_equivalent):
     FlowRate     = 0.0
     t_           = 1
 
-    print("Démarrage LBM (Numba JIT multi-cœur)...")
-    print("Compilation JIT au 1er pas — quelques secondes d'attente normale.")
+    if plotting:
+
+        print("Démarrage LBM (Numba JIT multi-cœur)...")
+        print("Compilation JIT au 1er pas — quelques secondes d'attente normale.")
 
     # Boucle temporelle
     while FlowRate == 0.0 or abs(FlowRate_old - FlowRate) / abs(FlowRate) >= epsilon:
@@ -303,17 +307,19 @@ def LBM(filename, NX, deltaP, dx, d_equivalent):
     uy_2d    = uy_plot.reshape(NX, NY).T
     solid_2d = SOLID.reshape(NX, NY).T.astype(float)
 
-    fig, ax = plt.subplots(figsize=(7, 7))
-    ax.imshow(2 - solid_2d, cmap='gray', vmin=0, vmax=2,
-              origin='lower', extent=[0.5, NX + 0.5, 0.5, NY + 0.5])
-    X, Y = np.meshgrid(np.arange(1, NX + 1), np.arange(1, NY + 1))
-    ax.quiver(X, Y, ux_2d, uy_2d, color='blue', scale=None, scale_units='xy')
-    ax.set_xlim(0.5, NX + 0.5)
-    ax.set_ylim(0.5, NY + 0.5)
-    ax.set_aspect('equal')
-    ax.set_title(f"Champ de vitesse après {t_} pas de temps")
-    plt.tight_layout()
-    plt.show()
+    if plotting:
+
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.imshow(2 - solid_2d, cmap='gray', vmin=0, vmax=2,
+                origin='lower', extent=[0.5, NX + 0.5, 0.5, NY + 0.5])
+        X, Y = np.meshgrid(np.arange(1, NX + 1), np.arange(1, NY + 1))
+        ax.quiver(X, Y, ux_2d, uy_2d, color='blue', scale=None, scale_units='xy')
+        ax.set_xlim(0.5, NX + 0.5)
+        ax.set_ylim(0.5, NY + 0.5)
+        ax.set_aspect('equal')
+        ax.set_title(f"Champ de vitesse après {t_} pas de temps")
+        plt.tight_layout()
+        plt.show()
 
     return k
 
